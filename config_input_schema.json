@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["language", "namespace", "file_no", "version", "author", "extensions", "tags", "comment", "objects"],
+  "properties": {
+    "language": {
+      "type": "string",
+      "description": "Language name (e.g., Python, Java)"
+    },
+    "namespace": {
+      "type": "string",
+      "enum": ["uc", "labs"],
+      "description": "Extension namespace: uc or labs"
+    },
+    "file_no": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "File number for ID range calculation"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version (e.g., 1.0.0)"
+    },
+    "author": {
+      "type": "string",
+      "description": "Extension author"
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "File extensions (e.g., ['py', 'pyw'])"
+    },
+    "tags": {
+      "type": "string",
+      "description": "NuGet package tags"
+    },
+    "comment": {
+      "type": "string",
+      "description": "Single-line comment syntax"
+    },
+    "multiline_comment": {
+      "type": "object",
+      "properties": {
+        "begin": {
+          "type": "string"
+        },
+        "end": {
+          "type": "string"
+        }
+      },
+      "required": ["begin", "end"]
+    },
+    "objects": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Z][a-zA-Z]*$": {
+          "type": "string"
+        }
+      },
+      "description": "Object hierarchy: 'ObjectName': 'ParentName' or 'file'"
+    }
+  }
+}

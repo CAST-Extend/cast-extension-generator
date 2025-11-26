@@ -1,0 +1,65 @@
+"""
+Unit tests for {{LANGUAGE}} analyzer level extension.
+
+This module tests the analysis of {{LANGUAGE}} source files to verify that:
+- Objects are correctly created in the knowledge base
+- Object types and names match expectations
+- Object hierarchy is properly established
+"""
+
+import unittest
+import cast.analysers.test
+from cast.analysers.test import UATestAnalysis
+
+
+class Test{{LANGUAGE}}AnalyzerLevel(unittest.TestCase):
+    """Test suite for {{LANGUAGE}} analyzer level processing."""
+    
+    def test_analyzer_level(self):
+        """
+        Test the analyzer level processing for {{LANGUAGE}} files.
+        
+        This test:
+        1. Instantiates a UA analyzer for '{{LANGUAGE}}' language
+        2. Adds the test_data folder as selection
+        3. Runs the analysis
+        4. Prints statistics about created objects and links
+        
+        To verify results, check:
+        - Analysis log for errors/warnings
+        - Statistics output for object counts
+        - Knowledge base content using analysis.get_objects_by_category()
+        """
+        # Instantiate a UA analyzer for '{{LANGUAGE}}' language
+        # Language name must match exactly the category name in MetaModel
+        # and the id in LanguagePattern
+        analysis = UATestAnalysis('{{LANGUAGE}}')
+        
+        # Add test data folder to analysis selection
+        analysis.add_selection('test_data')
+        
+        # Enable verbose output to see detailed logs
+        analysis.set_verbose(True)
+        
+        print("=" * 60)
+        print(f"Running {{LANGUAGE}} Analysis")
+        print("=" * 60)
+        
+        # Run the analysis
+        analysis.run()
+        
+        print("\n" + "=" * 60)
+        print(f"{{LANGUAGE}} Analysis Statistics")
+        print("=" * 60)
+        
+        # Print statistics about created objects and links
+        analysis.print_statistics()
+        
+        # Optional: Add assertions to verify specific objects were created
+        # Example:
+        # programs = analysis.get_objects_by_category('{{LANGUAGE}} Program')
+        # self.assertGreater(len(programs), 0, "No programs were created")
+
+
+if __name__ == "__main__":
+    unittest.main()

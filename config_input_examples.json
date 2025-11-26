@@ -1,0 +1,71 @@
+{
+  "examples": [
+    {
+      "name": "Python Extension",
+      "config": {
+        "language": "Python",
+        "namespace": "uc",
+        "file_no": 7,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["py", "pyw"],
+        "tags": "Python parser static-analysis",
+        "comment": "#",
+        "objects": {
+          "Program": "file",
+          "Class": "Program",
+          "Method": "Class",
+          "Function": "Program",
+          "Lambda": "Program"
+        }
+      }
+    },
+    {
+      "name": "Java Extension",
+      "config": {
+        "language": "Java",
+        "namespace": "labs",
+        "file_no": 12,
+        "version": "2.1.0",
+        "author": "CAST Labs",
+        "extensions": ["java"],
+        "tags": "Java OOP enterprise",
+        "comment": "//",
+        "multiline_comment": {
+          "begin": "/*",
+          "end": "*/"
+        },
+        "objects": {
+          "Program": "file",
+          "Package": "Program",
+          "Class": "Package",
+          "Interface": "Package",
+          "Method": "Class",
+          "Constructor": "Class",
+          "Field": "Class",
+          "Annotation": "Class"
+        }
+      }
+    },
+    {
+      "name": "COBOL Extension",
+      "config": {
+        "language": "COBOL",
+        "namespace": "uc",
+        "file_no": 3,
+        "version": "1.5.2",
+        "author": "CAST",
+        "extensions": ["cbl", "cob", "cpy"],
+        "tags": "COBOL mainframe legacy",
+        "comment": "*>",
+        "objects": {
+          "Program": "file",
+          "Section": "Program",
+          "Paragraph": "Section",
+          "DataItem": "Program",
+          "FileDescriptor": "Program"
+        }
+      }
+    }
+  ]
+}

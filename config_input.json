@@ -1,0 +1,20 @@
+{
+  "language": "Java",
+  "namespace": "uc",
+  "file_no": 18,
+  "version": "1.0.0",
+  "author": "CAST",
+  "extensions": ["java", "javac"],
+  "tags": "Java Extension",
+  "comment": "//",
+  "multiline_comment": {
+    "begin": "/*",
+    "end": "*/"
+  },
+  "objects": {
+    "Program": "file",
+    "Class": "Program",
+    "Method": "Class",
+    "Function": "Program"
+  }
+}
