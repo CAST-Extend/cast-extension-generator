@@ -31,8 +31,6 @@ class Test{{LANGUAGE}}AnalyzerLevel(unittest.TestCase):
         - Knowledge base content using analysis.get_objects_by_category()
         """
         # Instantiate a UA analyzer for '{{LANGUAGE}}' language
-        # Language name must match exactly the category name in MetaModel
-        # and the id in LanguagePattern
         analysis = UATestAnalysis('{{LANGUAGE}}')
         
         # Add test data folder to analysis selection
@@ -42,14 +40,14 @@ class Test{{LANGUAGE}}AnalyzerLevel(unittest.TestCase):
         analysis.set_verbose(True)
         
         print("=" * 60)
-        print(f"Running {{LANGUAGE}} Analysis")
+        print("Running {{LANGUAGE}} Analysis")
         print("=" * 60)
         
         # Run the analysis
         analysis.run()
         
         print("\n" + "=" * 60)
-        print(f"{{LANGUAGE}} Analysis Statistics")
+        print("{{LANGUAGE}} Analysis Statistics")
         print("=" * 60)
         
         # Print statistics about created objects and links

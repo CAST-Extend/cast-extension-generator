@@ -1,0 +1,21 @@
+# VS Code
+.vscode/
+
+# GitHub metadata
+.github/
+
+# CAST extension generator configs & outputs
+test_configs/
+test_output/
+
+# Python garbage (because you ALWAYS forget)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.tmp
+*.log
+
+# Windows trash (au cas où tu traînes ces merdes)
+Thumbs.db
+desktop.ini

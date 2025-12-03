@@ -1,0 +1,906 @@
+# -*- coding: utf-8 -*-
+"""
+{{LANGUAGE}} Module - File-level parsing logic
+
+This module encapsulates all parsing logic for a single {{LANGUAGE}} source file.
+It follows a modular, extensible architecture:
+
+  - Light parsing: Quick extraction of global structures (classes, functions, etc.)
+  - Full parsing: Deep AST traversal for detailed analysis
+  - Reference resolution: Link creation between objects
+  - Extensible: Add custom parsers via the parser registry
+
+The design allows users to extend parsing capabilities by:
+1. Subclassing {{MODULE_CLASS}} and overriding parsing methods
+2. Registering custom AST node handlers
+3. Adding new object extractors
+
+Python 3.4+ compatible.
+"""
+
+from cast.analysers import log, CustomObject, create_link, Bookmark
+import os
+import re
+from collections import defaultdict
+
+
+# =============================================================================
+# OBJECT HIERARCHY CONFIGURATION
+# =============================================================================
+# This configuration is generated from config_input.json
+# It defines:
+#   - Object types and their parent relationships
+#   - Pattern keys that detect each object type
+#
+# Format:
+#   'ObjectType': {
+#       'parent': 'ParentType' or 'file',  # Where this object can be contained
+#       'pattern_keys': ['pattern1', ...]   # Grammar patterns that detect this type
+#   }
+# =============================================================================
+
+OBJECTS_CONFIG = {
+{{OBJECTS_CONFIG}}
+}
+
+# Build reverse mapping: pattern_key -> object_type
+PATTERN_TO_OBJECT_TYPE = {}
+for obj_type, obj_def in OBJECTS_CONFIG.items():
+    for pattern_key in obj_def.get('pattern_keys', []):
+        PATTERN_TO_OBJECT_TYPE[pattern_key] = obj_type
+
+# Build parent hierarchy for containment tracking
+OBJECT_PARENTS = {obj_type: obj_def['parent'] for obj_type, obj_def in OBJECTS_CONFIG.items()}
+
+
+# =============================================================================
+# PARSER REGISTRY - Extensibility point for custom parsers
+# =============================================================================
+
+class ParserRegistry:
+    """
+    Registry for pluggable AST node handlers.
+    
+    Allows users to extend parsing capabilities without modifying core code.
+    Register handlers for specific node types or patterns.
+    
+    Usage:
+        registry = ParserRegistry()
+        registry.register('ClassDef', my_class_handler)
+        registry.register('FunctionDef', my_function_handler)
+    """
+    
+    def __init__(self):
+        self._handlers = defaultdict(list)
+        self._pattern_handlers = []
+    
+    def register(self, node_type, handler):
+        """
+        Register a handler for a specific node type.
+        
+        Args:
+            node_type (str): AST node type name (e.g., 'ClassDef', 'FunctionDef')
+            handler (callable): Function(node, module) -> list of objects
+        """
+        self._handlers[node_type].append(handler)
+    
+    def register_pattern(self, pattern, handler):
+        """
+        Register a handler for nodes matching a regex pattern.
+        
+        Args:
+            pattern (str): Regex pattern to match against node types
+            handler (callable): Function(node, module) -> list of objects
+        """
+        self._pattern_handlers.append((re.compile(pattern), handler))
+    
+    def get_handlers(self, node_type):
+        """Get all handlers for a node type."""
+        handlers = list(self._handlers.get(node_type, []))
+        for pattern, handler in self._pattern_handlers:
+            if pattern.match(node_type):
+                handlers.append(handler)
+        return handlers
+
+
+# Global parser registry - extend this to add custom handlers
+PARSER_REGISTRY = ParserRegistry()
+
+
+# =============================================================================
+# LIBRARY - Container for all modules
+# =============================================================================
+
+class {{LANGUAGE}}Library:
+    """
+    Container for all {{LANGUAGE}} modules in the analysis.
+    
+    Provides:
+    - Storage for Module instances
+    - Global symbol table for cross-file resolution
+    - Lookup methods for reference resolution
+    
+    Attributes:
+        modules (list): List of {{MODULE_CLASS}} instances
+        symbols (dict): Global symbol table {fullname: object}
+    """
+    
+    def __init__(self):
+        self.modules = []
+        self.symbols = {}  # {fullname: CustomObject}
+        self.symbols_by_name = defaultdict(list)  # {short_name: [fullnames]}
+    
+    def add_module(self, module):
+        """Add a module to the library and register its objects."""
+        self.modules.append(module)
+        # Register all objects from this module in the global symbol table
+        for fullname, obj in module.objects.items():
+            short_name = None
+            if hasattr(module, '_short_names') and fullname in module._short_names:
+                short_name = module._short_names[fullname]
+            self.register_symbol(fullname, obj, short_name)
+    
+    def get_modules(self):
+        """Get all modules in the library."""
+        return self.modules
+    
+    def register_symbol(self, fullname, obj, short_name=None):
+        """
+        Register a symbol in the global symbol table.
+        
+        Args:
+            fullname (str): Fully qualified name of the symbol
+            obj: The CAST CustomObject
+            short_name (str, optional): Short name for resolution
+        """
+        self.symbols[fullname] = obj
+        if short_name:
+            self.symbols_by_name[short_name].append(fullname)
+    
+    def resolve_symbol(self, name, context_module=None):
+        """
+        Resolve a symbol name to its object.
+        
+        Resolution priority:
+        1. Exact fullname match
+        2. Same-file match (if context_module provided)
+        3. First match by short name
+        
+        Args:
+            name (str): Symbol name to resolve
+            context_module: Module providing context for resolution
+            
+        Returns:
+            CustomObject or None
+        """
+        # Try exact match first
+        if name in self.symbols:
+            return self.symbols[name]
+        
+        # Try resolution by short name
+        if name in self.symbols_by_name:
+            candidates = self.symbols_by_name[name]
+            
+            # Prefer same-file match
+            if context_module:
+                module_prefix = context_module.get_base_name() + '.'
+                for fullname in candidates:
+                    if fullname.startswith(module_prefix):
+                        return self.symbols[fullname]
+            
+            # Return first match if any
+            if candidates:
+                return self.symbols[candidates[0]]
+        
+        return None
+
+
+# =============================================================================
+# AST NODE - Generic AST representation
+# =============================================================================
+
+class ASTNode:
+    """
+    Generic AST node representation.
+    
+    Provides a language-agnostic structure for representing parsed elements.
+    Can be extended or replaced with language-specific implementations.
+    
+    Attributes:
+        type (str): Node type (e.g., 'class', 'function', 'method')
+        name (str): Node name
+        start_line (int): Starting line number
+        end_line (int): Ending line number
+        children (list): Child nodes
+        properties (dict): Additional node-specific properties
+    """
+    
+    def __init__(self, node_type, name=None, start_line=0, end_line=0):
+        self.type = node_type
+        self.name = name
+        self.start_line = start_line
+        self.end_line = end_line
+        self.children = []
+        self.properties = {}
+        self.parent = None
+    
+    def add_child(self, child):
+        """Add a child node."""
+        child.parent = self
+        self.children.append(child)
+        return child
+    
+    def get_children_by_type(self, node_type):
+        """Get all children of a specific type."""
+        return [c for c in self.children if c.type == node_type]
+    
+    def walk(self):
+        """
+        Generator that yields all nodes in the tree (depth-first).
+        
+        Yields:
+            ASTNode: Each node in the tree
+        """
+        yield self
+        for child in self.children:
+            for node in child.walk():
+                yield node
+
+
+# =============================================================================
+# MODULE CLASS - Core file parsing logic
+# =============================================================================
+
+class {{MODULE_CLASS}}:
+    """
+    Encapsulates parsing logic for a single {{LANGUAGE}} source file.
+    
+    Implements the 2-pass parsing architecture:
+    - light_parse(): Extract global structures (classes, functions)
+    - full_parse(): Deep analysis for references and calls
+    - resolve(): Create links between objects
+    
+    This class is designed to be extensible:
+    - Override _extract_* methods for custom extraction logic
+    - Use the parser registry for pluggable handlers
+    - Subclass for language-specific behavior
+    
+    Attributes:
+        path (str): Full path to the source file
+        file: CAST File object
+        ast (ASTNode): Parsed AST (available after light_parse)
+        objects (dict): Created CAST objects {fullname: CustomObject}
+        pending_links (list): Links to create during resolution
+    """
+    
+    def __init__(self, path, file=None):
+        """
+        Initialize a module for a source file.
+        
+        Args:
+            path (str): Full path to the source file
+            file: CAST File object (from start_file callback)
+        """
+        self.path = path
+        self.file = file
+        self.ast = None
+        self.source_content = None
+        
+        # Object storage
+        self.objects = {}  # {fullname: CustomObject}
+        self.objects_by_type = defaultdict(list)  # {type: [objects]}
+        
+        # Links to create during resolution
+        self.pending_links = []  # [(caller_fullname, callee_name, link_type, line)]
+        
+        # Program-level object (container for file)
+        self.program = None
+    
+    def get_path(self):
+        """Get the file path."""
+        return self.path
+    
+    def get_base_name(self):
+        """Get the base filename without extension."""
+        return os.path.splitext(os.path.basename(self.path))[0]
+    
+    def get_filename(self):
+        """Get the filename with extension."""
+        return os.path.basename(self.path)
+    
+    # =========================================================================
+    # PHASE 1: LIGHT PARSING
+    # =========================================================================
+    
+    def light_parse(self):
+        """
+        PHASE 1: Light parsing to extract global structures.
+        
+        This method:
+        1. Reads the source file
+        2. Builds a coarse AST
+        3. Extracts global elements (classes, functions, etc.)
+        4. Creates CAST objects for discovered elements
+        
+        Override _build_light_ast() and _extract_globals() for custom logic.
+        """
+        log.debug('[{{LANGUAGE}}] Light parsing: ' + self.path)
+        
+        # Read source content
+        self._read_source()
+        
+        # Build coarse AST
+        self.ast = self._build_light_ast()
+        
+        # Create program-level object
+        self._create_program_object()
+        
+        # Extract global structures
+        self._extract_globals()
+    
+    def _read_source(self):
+        """Read the source file content."""
+        try:
+            with open(self.path, 'r', encoding='utf-8') as f:
+                self.source_content = f.read()
+        except UnicodeDecodeError:
+            # Fallback to latin-1 for non-UTF8 files
+            with open(self.path, 'r', encoding='latin-1') as f:
+                self.source_content = f.read()
+        except Exception as e:
+            log.warning('[{{LANGUAGE}}] Failed to read file: ' + str(e))
+            self.source_content = ''
+    
+    def _get_structure_patterns(self):
+        """
+        Get regex patterns for detecting global structures.
+        
+        These patterns are configurable via config_input.json grammar section.
+        Multiple patterns per object type are supported.
+        
+        Returns:
+            dict: {node_type: [list of compiled_regex_patterns]}
+        """
+        # Patterns defined in config_input.json - multiple patterns per type supported
+        raw_patterns = {
+{{PATTERNS_DICT}}
+        }
+        
+        patterns = {}
+        for obj_type, pattern_list in raw_patterns.items():
+            compiled = []
+            for p in pattern_list:
+                try:
+                    compiled.append(re.compile(p, re.IGNORECASE))
+                except Exception as e:
+                    log.warning('[{{LANGUAGE}}] Invalid pattern for ' + obj_type + ': ' + str(e))
+            if compiled:
+                patterns[obj_type] = compiled
+        
+        return patterns
+    
+    def _get_container_types(self):
+        """
+        Get object types that can contain other objects.
+        
+        Returns:
+            set: Object types that have children (based on parent relationships)
+        """
+        container_types = set()
+        for obj_type, obj_def in OBJECTS_CONFIG.items():
+            parent = obj_def.get('parent', 'file')
+            if parent != 'file' and parent != 'Program':
+                # This parent type is a container
+                container_types.add(parent)
+        return container_types
+    
+    def _get_children_types(self, parent_type):
+        """
+        Get object types that can be children of a given parent type.
+        
+        Args:
+            parent_type (str): Parent object type name
+            
+        Returns:
+            set: Pattern keys for objects that are children of this type
+        """
+        child_patterns = set()
+        for obj_type, obj_def in OBJECTS_CONFIG.items():
+            if obj_def.get('parent') == parent_type:
+                for pattern_key in obj_def.get('pattern_keys', []):
+                    child_patterns.add(pattern_key)
+        return child_patterns
+    
+    def _build_light_ast(self):
+        """
+        Build a coarse AST from the source content.
+        
+        Dynamically handles object hierarchy based on OBJECTS_CONFIG.
+        Tracks brace depth to determine containment.
+        
+        Returns:
+            ASTNode: Root node of the AST
+        """
+        root = ASTNode('module', self.get_base_name())
+        root.start_line = 1
+        root.end_line = len(self.source_content.splitlines()) if self.source_content else 1
+        
+        if not self.source_content:
+            return root
+        
+        lines = self.source_content.splitlines()
+        
+        # Get patterns (multiple per type)
+        patterns = self._get_structure_patterns()
+        
+        # Determine which pattern types are containers (can have children)
+        container_patterns = set()
+        for obj_type in self._get_container_types():
+            for pattern_key in OBJECTS_CONFIG.get(obj_type, {}).get('pattern_keys', []):
+                container_patterns.add(pattern_key)
+        
+        # Stack of current containers: [(node, brace_depth_at_start)]
+        container_stack = []
+        brace_depth = 0
+        
+        for i, line in enumerate(lines, 1):
+            # Track brace depth
+            open_braces = line.count('{')
+            close_braces = line.count('}')
+            
+            # Before processing, check if any containers have ended
+            new_depth = brace_depth + open_braces - close_braces
+            while container_stack and new_depth <= container_stack[-1][1]:
+                ended_node, _ = container_stack.pop()
+                ended_node.end_line = i
+            
+            brace_depth = new_depth
+            
+            # Now check for pattern matches
+            # Use a flag to ensure only ONE pattern matches per line (prevents GUID duplicates)
+            matched_on_line = False
+            for pattern_key, pattern_list in patterns.items():
+                if matched_on_line:
+                    break  # Already found a match on this line, skip remaining pattern types
+                for pattern in pattern_list:
+                    match = pattern.match(line)
+                    if match:
+                        name = match.group('name') if 'name' in match.groupdict() else match.group(1)
+                        node = ASTNode(pattern_key, name, start_line=i)
+                        
+                        # Check for receiver/parent group in pattern (for Go-style methods, Rust impl, etc.)
+                        # This allows patterns like: func (c *Config) Get() to extract "Config" as receiver
+                        if 'receiver' in match.groupdict() and match.group('receiver'):
+                            # Clean the receiver name (remove pointer * if present)
+                            receiver = match.group('receiver').lstrip('*')
+                            node.properties['receiver'] = receiver
+                        
+                        # Determine where to add this node based on OBJECTS_CONFIG hierarchy
+                        obj_type = PATTERN_TO_OBJECT_TYPE.get(pattern_key)
+                        parent_type = OBJECT_PARENTS.get(obj_type, 'Program') if obj_type else 'Program'
+                        
+                        # Find the appropriate parent in the stack
+                        added = False
+                        if parent_type != 'Program' and parent_type != 'file':
+                            # Look for a matching container in the stack
+                            # First, try to find exact match for parent type
+                            for container_node, _ in reversed(container_stack):
+                                container_obj_type = PATTERN_TO_OBJECT_TYPE.get(container_node.type)
+                                if container_obj_type == parent_type:
+                                    container_node.add_child(node)
+                                    added = True
+                                    break
+                            
+                            # If no exact match, add to nearest container (for languages like Ruby)
+                            if not added and container_stack:
+                                nearest_container, _ = container_stack[-1]
+                                nearest_container.add_child(node)
+                                added = True
+                        
+                        if not added:
+                            # Add to root (will become child of Program)
+                            root.add_child(node)
+                        
+                        # If this is a container type, push it onto the stack
+                        if pattern_key in container_patterns:
+                            container_stack.append((node, brace_depth - open_braces))
+                        
+                        matched_on_line = True
+                        break  # Only match first pattern for this pattern_key on this line
+        
+        return root
+    
+    def _create_program_object(self):
+        """Create the program-level container object."""
+        self.program = CustomObject()
+        self.program.set_type('{{LANGUAGE}}Program')
+        self.program.set_name(self.get_filename())
+        self.program.set_fullname(self.path)
+        self.program.set_parent(self.file)
+        self.program.set_guid(self._generate_guid('{{LANGUAGE}}Program', self.path, 0))
+        self.program.save()
+        
+        # Bookmark must be set AFTER save() - allows F11 Code Viewer
+        if self.ast and self.ast.end_line > 0:
+            self._set_bookmark(self.program, 1, self.ast.end_line)
+        
+        # Register in objects
+        self._register_object(self.path, self.program, self.get_filename(), '{{LANGUAGE}}Program')
+    
+    def _extract_globals(self):
+        """
+        Extract global structures from the AST.
+        
+        Dynamically creates CAST objects based on OBJECTS_CONFIG hierarchy.
+        Uses the parser registry for extensibility.
+        """
+        if not self.ast:
+            return
+        
+        # Process all children of root AST node
+        for node in self.ast.children:
+            # Check registry for custom handlers first
+            handlers = PARSER_REGISTRY.get_handlers(node.type)
+            for handler in handlers:
+                try:
+                    handler(node, self)
+                except Exception as e:
+                    log.debug('[{{LANGUAGE}}] Handler error: ' + str(e))
+            
+            # Extract object using dynamic hierarchy
+            self._extract_object(node, self.program, '')
+    
+    def _extract_object(self, node, parent_cast_obj, parent_name_prefix):
+        """
+        Dynamically extract an object based on OBJECTS_CONFIG.
+        
+        Args:
+            node (ASTNode): AST node to extract
+            parent_cast_obj: Parent CAST object
+            parent_name_prefix (str): Prefix for fullname (e.g., 'ClassName.')
+            
+        Returns:
+            CustomObject: The created CAST object
+        """
+        # Determine object type from pattern key
+        pattern_key = node.type
+        obj_type = PATTERN_TO_OBJECT_TYPE.get(pattern_key)
+        
+        if not obj_type:
+            # Unknown pattern, skip
+            log.debug('[{{LANGUAGE}}] Unknown pattern type: ' + pattern_key)
+            return None
+        
+        # Build fullname based on hierarchy BEFORE creating object
+        # Priority: 1) receiver from pattern (Go-style), 2) parent_name_prefix from AST, 3) none
+        effective_prefix = parent_name_prefix
+        if 'receiver' in node.properties:
+            # For Go-style methods: use receiver as prefix
+            effective_prefix = node.properties['receiver'] + '.'
+        
+        if effective_prefix:
+            fullname = self.get_filename() + '.' + effective_prefix + node.name
+        else:
+            fullname = self.get_filename() + '.' + node.name
+        
+        # DUPLICATE PREVENTION: Skip if fullname already exists
+        # This handles cases where multiple patterns match the same construct
+        if fullname in self.objects:
+            log.debug('[{{LANGUAGE}}] Skipping duplicate: ' + fullname)
+            # Still process children in case they're unique
+            child_name_prefix = parent_name_prefix + node.name + '.'
+            for child in node.children:
+                self._extract_object(child, self.objects[fullname], child_name_prefix)
+            return self.objects[fullname]
+        
+        # Create CAST object
+        cast_obj = CustomObject()
+        cast_obj.set_type('{{LANGUAGE}}' + obj_type)
+        cast_obj.set_name(node.name)
+        cast_obj.set_fullname(fullname)
+        cast_obj.set_parent(parent_cast_obj)
+        cast_obj.set_guid(self._generate_guid('{{LANGUAGE}}' + obj_type, fullname, node.start_line))
+        cast_obj.save()
+        
+        # Bookmark must be set AFTER save()
+        if node.start_line > 0:
+            self._set_bookmark(cast_obj, node.start_line, node.end_line or node.start_line)
+        
+        self._register_object(fullname, cast_obj, node.name, '{{LANGUAGE}}' + obj_type)
+        
+        # Recursively extract children (e.g., methods inside classes)
+        child_name_prefix = parent_name_prefix + node.name + '.'
+        for child in node.children:
+            self._extract_object(child, cast_obj, child_name_prefix)
+    
+    def _register_object(self, fullname, obj, short_name=None, obj_type=None):
+        """Register an object in the module's symbol table."""
+        self.objects[fullname] = obj
+        # Store by type name (passed explicitly since get_type() may not work after save)
+        type_name = obj_type if obj_type else 'unknown'
+        self.objects_by_type[type_name].append(obj)
+        # Store short_name for later registration in library
+        if short_name:
+            if not hasattr(self, '_short_names'):
+                self._short_names = {}
+            self._short_names[fullname] = short_name
+        log.info('[{{LANGUAGE}}] Created object: ' + fullname + ' (type: ' + type_name + ')')
+
+    def _generate_guid(self, cast_type, fullname, start_line=0):
+        """Create deterministic GUIDs combining type, file path and location."""
+        safe_path = self.path.replace('?', '_')
+        line_marker = start_line if start_line is not None else 0
+        return cast_type + '?[' + safe_path + '].' + fullname + '@' + str(line_marker)
+    
+    def _set_bookmark(self, obj, start_line, end_line):
+        """Set a bookmark on an object for source code location."""
+        try:
+            if self.file and start_line > 0:
+                # Create bookmark following Easytrieve pattern:
+                # end_line + 1 and end_column = 1
+                bookmark = Bookmark(self.file, start_line, 1, end_line + 1, 1)
+                obj.save_position(bookmark)
+        except Exception as e:
+            log.info('[{{LANGUAGE}}] Bookmark error: ' + str(e))
+    
+    # =========================================================================
+    # PHASE 2: FULL PARSING
+    # =========================================================================
+    
+    def full_parse(self):
+        """
+        PHASE 2: Full parsing for detailed analysis.
+        
+        This method:
+        1. Re-parses the AST with more detail (if needed)
+        2. Extracts function calls and references
+        3. Stores pending links for resolution
+        
+        Override _extract_calls() and _extract_references() for custom logic.
+        """
+        log.debug('[{{LANGUAGE}}] Full parsing: ' + self.path)
+        
+        if not self.source_content:
+            return
+        
+        # Extract function/method calls
+        self._extract_calls()
+        
+        # Extract other references (variables, types, etc.)
+        self._extract_references()
+    
+    def _extract_calls(self):
+        """
+        Extract function and method calls from the source.
+        
+        Call pattern is configurable via config_input.json grammar section.
+        Stores discovered calls in pending_links for later resolution.
+        """
+        if not self.source_content:
+            return
+        
+        # Call pattern - configurable via config_input.json
+        call_pattern_str = r'''{{CALL_PATTERN}}'''
+        if not call_pattern_str:
+            return
+        
+        call_pattern = re.compile(call_pattern_str)
+        
+        lines = self.source_content.splitlines()
+        current_context = self.path  # Default context is the program
+        
+        for i, line in enumerate(lines, 1):
+            # Skip comment lines (basic detection)
+            stripped = line.strip()
+            if stripped.startswith('{{COMMENT}}') or stripped.startswith('#'):
+                continue
+            
+            # Find all potential calls in the line
+            for match in call_pattern.finditer(line):
+                # Try different named groups (callee, callee1, callee2, callee3, func_callee, etc.)
+                callee_name = None
+                for group_name in ['callee', 'callee1', 'callee2', 'callee3', 'func_callee', 'name']:
+                    try:
+                        callee_name = match.group(group_name)
+                        if callee_name:
+                            break
+                    except IndexError:
+                        continue
+                
+                # Fallback to group 1 if no named group found
+                if not callee_name:
+                    try:
+                        callee_name = match.group(1)
+                    except IndexError:
+                        continue
+                
+                if not callee_name:
+                    continue
+                
+                # Skip common keywords that look like function calls
+                if callee_name.lower() in self._get_keywords():
+                    continue
+                
+                # Add to pending links
+                self.pending_links.append({
+                    'caller': current_context,
+                    'callee': callee_name,
+                    'type': 'call',
+                    'line': i
+                })
+    
+    def _get_keywords(self):
+        """
+        Get language keywords to exclude from call detection.
+        
+        Keywords are configurable via config_input.json grammar section.
+        """
+        return {
+{{KEYWORDS_SET}}
+        }
+    
+    def _extract_references(self):
+        """
+        Extract non-call references (types, variables, etc.).
+        
+        Override for language-specific reference extraction.
+        """
+        # Default implementation is a no-op
+        # Override to extract type references, variable usages, etc.
+        pass
+    
+    # =========================================================================
+    # RESOLUTION AND LINK CREATION
+    # =========================================================================
+    
+    def resolve(self, library):
+        """
+        Resolve references and prepare links.
+        
+        Uses the library's symbol table to resolve callee names
+        to actual objects.
+        
+        Args:
+            library ({{LANGUAGE}}Library): The global library for symbol resolution
+        """
+        log.debug('[{{LANGUAGE}}] Resolving references for: ' + self.path)
+        
+        resolved_links = []
+        
+        for link_info in self.pending_links:
+            callee_name = link_info['callee']
+            
+            # Try to resolve the callee
+            callee_obj = library.resolve_symbol(callee_name, self)
+            
+            if callee_obj:
+                link_info['resolved_callee'] = callee_obj
+                resolved_links.append(link_info)
+            else:
+                log.debug('[{{LANGUAGE}}] Unresolved reference: ' + callee_name)
+        
+        self.pending_links = resolved_links
+    
+    def save_objects(self):
+        """
+        Save all objects to CAST.
+        
+        Note: Objects are already saved during extraction.
+        This method returns the count for statistics.
+        
+        Returns:
+            int: Number of objects created
+        """
+        return len(self.objects)
+    
+    def save_links(self):
+        """
+        Create all resolved links in CAST.
+        
+        Note: We skip links where the caller is the Program (file level),
+        as the containment relationship already expresses this.
+        Only function/method -> function/method/class links are meaningful.
+        
+        Returns:
+            int: Number of links created
+        """
+        links_created = 0
+        
+        for link_info in self.pending_links:
+            if 'resolved_callee' not in link_info:
+                continue
+            
+            caller_fullname = link_info['caller']
+            callee_obj = link_info['resolved_callee']
+            callee_name = link_info.get('callee', 'unknown')
+            link_type = link_info.get('type', 'call')
+            line = link_info.get('line', 0)
+            
+            # Skip links where caller is the Program (file path)
+            # The containment (parent/child) relationship already expresses this
+            if caller_fullname == self.path:
+                continue
+            
+            # Find caller object
+            caller_obj = self.objects.get(caller_fullname)
+            if not caller_obj:
+                log.debug('[{{LANGUAGE}}] Caller not found: ' + caller_fullname)
+                continue
+            
+            # Get a readable caller name for logging
+            caller_name = caller_fullname.split('.')[-1] if '.' in caller_fullname else caller_fullname
+            
+            if caller_obj and callee_obj:
+                try:
+                    # Log the call relationship
+                    log.info('[{{LANGUAGE}}] CALL: ' + caller_name + ' -> ' + callee_name + ' (line ' + str(line) + ')')
+                    
+                    # Create bookmark for the call location
+                    bookmark = None
+                    if line > 0 and self.file:
+                        try:
+                            bookmark = Bookmark(self.file, line, 1, line, -1)
+                        except:
+                            pass
+                    
+                    # Create the link
+                    if bookmark:
+                        create_link('callLink', caller_obj, callee_obj, bookmark)
+                    else:
+                        create_link('callLink', caller_obj, callee_obj)
+                    
+                    links_created += 1
+                    
+                except Exception as e:
+                    log.debug('[{{LANGUAGE}}] Failed to create link: ' + str(e))
+        
+        return links_created
+        
+        return links_created
+    
+    # =========================================================================
+    # CLEANUP
+    # =========================================================================
+    
+    def clean_ast(self):
+        """
+        Clean up the AST to free memory.
+        
+        Called after Phase 2 processing is complete.
+        """
+        self.ast = None
+        self.source_content = None
+        log.debug('[{{LANGUAGE}}] Cleaned AST for: ' + self.path)
+
+
+# =============================================================================
+# EXTENSIBILITY EXAMPLES
+# =============================================================================
+
+def register_custom_handler(node_type, handler):
+    """
+    Register a custom handler for a node type.
+    
+    Example usage:
+        def my_class_handler(node, module):
+            # Custom class processing logic
+            pass
+        
+        register_custom_handler('class', my_class_handler)
+    
+    Args:
+        node_type (str): AST node type to handle
+        handler (callable): Handler function(node, module)
+    """
+    PARSER_REGISTRY.register(node_type, handler)
+
+
+def register_pattern_handler(pattern, handler):
+    """
+    Register a handler for nodes matching a pattern.
+    
+    Args:
+        pattern (str): Regex pattern for node types
+        handler (callable): Handler function(node, module)
+    """
+    PARSER_REGISTRY.register_pattern(pattern, handler)

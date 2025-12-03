@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["language", "namespace", "file_no", "version", "author", "extensions", "tags", "comment", "objects"],
+  "required": ["language", "namespace", "file_no", "version", "author", "extensions", "tags", "comment", "objects", "grammar"],
   "properties": {
     "language": {
       "type": "string",
-      "description": "Language name (e.g., Python, Java)"
+      "description": "Language name (e.g., Python, Java, PowerShell)"
     },
     "namespace": {
       "type": "string",
@@ -32,7 +32,7 @@
         "type": "string"
       },
       "minItems": 1,
-      "description": "File extensions (e.g., ['py', 'pyw'])"
+      "description": "File extensions without dot (e.g., ['py', 'pyw'])"
     },
     "tags": {
       "type": "string",
@@ -40,28 +40,60 @@
     },
     "comment": {
       "type": "string",
-      "description": "Single-line comment syntax"
+      "description": "Single-line comment syntax (e.g., '#' or '//')"
     },
     "multiline_comment": {
       "type": "object",
       "properties": {
-        "begin": {
-          "type": "string"
-        },
-        "end": {
-          "type": "string"
-        }
+        "begin": { "type": "string" },
+        "end": { "type": "string" }
       },
-      "required": ["begin", "end"]
+      "required": ["begin", "end"],
+      "description": "Multi-line comment delimiters"
     },
     "objects": {
       "type": "object",
-      "patternProperties": {
-        "^[A-Z][a-zA-Z]*$": {
-          "type": "string"
+      "description": "Object type hierarchy. Each object defines its parent and which grammar patterns detect it.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["parent", "pattern_keys"],
+        "properties": {
+          "parent": {
+            "type": "string",
+            "description": "Parent object type name, or 'file' for objects directly under the source file"
+          },
+          "pattern_keys": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Array of pattern names from grammar.patterns that detect this object type. Empty array for auto-created objects like Program."
+          }
         }
-      },
-      "description": "Object hierarchy: 'ObjectName': 'ParentName' or 'file'"
+      }
+    },
+    "grammar": {
+      "type": "object",
+      "description": "Language-specific grammar patterns for parsing",
+      "required": ["patterns", "call_pattern", "keywords"],
+      "properties": {
+        "patterns": {
+          "type": "object",
+          "description": "Named patterns to detect code structures. Each pattern is a regex with a named group (?P<name>...) to capture the object name. Pattern names are referenced in objects.*.pattern_keys",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Array of regex patterns (multiple patterns can match the same object type)"
+          }
+        },
+        "call_pattern": {
+          "type": "string",
+          "description": "Regex pattern to detect function/method calls. Group 1 must capture the callee name."
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Language keywords to exclude from call detection (control flow, declarations, etc.)"
+        }
+      }
     }
   }
 }

@@ -76,7 +76,25 @@ class CastXMLGenerator:
         self._add_enlighten_group(root)
         self._add_object_types(root)
         
+        # Add Project type at the end - required for CAST UA to find the project
+        self._add_project_type(root)
+        
         return self._prettify_xml(root)
+    
+    def _add_project_type(self, parent):
+        """Add the Project type required by CAST UA framework."""
+        parent.append(ET.Comment(f' {self.language} project '))
+        
+        type_elem = ET.SubElement(parent, 'type')
+        type_elem.set('name', f'{self.language}Project')
+        type_elem.set('rid', str(self._get_rid('Project')))
+        
+        desc = ET.SubElement(type_elem, 'description')
+        desc.text = f'{self.language} Project'
+        
+        ET.SubElement(type_elem, 'inheritedCategory', name='UAProject')
+        ET.SubElement(type_elem, 'inheritedCategory', name=self.language)
+        ET.SubElement(type_elem, 'inheritedCategory', name=f'{self.language} Module')
     
     def _add_categories(self, parent):
         cat = ET.SubElement(parent, 'category')
@@ -168,10 +186,17 @@ class CastXMLGenerator:
             "Template": f"{self.language} Template",
             "Generic": f"{self.language} Generic Type",
             "Event": f"{self.language} Event",
-            "Delegate": f"{self.language} Delegate"
+            "Delegate": f"{self.language} Delegate",
+            "Label": f"{self.language} Label"
         }
         
-        for obj_name, parent_value in self.objects.items():
+        for obj_name, obj_def in self.objects.items():
+            # Support both new format (dict) and legacy format (string)
+            if isinstance(obj_def, dict):
+                parent_value = obj_def.get('parent', 'file')
+            else:
+                parent_value = obj_def
+            
             type_elem = ET.SubElement(parent, 'type')
             type_elem.set('name', f"{self.language}{obj_name}")
             type_elem.set('rid', str(self._get_rid(obj_name)))
@@ -192,13 +217,24 @@ class CastXMLGenerator:
             tree.set('parent', self._get_parent_name(parent_value))
             tree.set('category', 'EnlightenTree')
     
+    def _escape_regex(self, text):
+        """Escape special regex characters for use in LanguagePattern XML."""
+        # Characters that need escaping in regex
+        special_chars = ['\\', '.', '^', '$', '*', '+', '?', '{', '}', '[', ']', '(', ')', '|']
+        result = text
+        for char in special_chars:
+            result = result.replace(char, '\\' + char)
+        return result
+    
     def generate_language_pattern(self):
         root = ET.Element('languagePattern')
         root.set('id', self.language)
         
         comment_elem = ET.SubElement(root, 'comment')
         begin = ET.SubElement(comment_elem, 'begin')
-        begin.text = f"<![CDATA[{self.comment}]]>"
+        # Escape the comment character for regex
+        escaped_comment = self._escape_regex(self.comment)
+        begin.text = f"<![CDATA[{escaped_comment}]]>"
         end = ET.SubElement(comment_elem, 'end')
         end.text = "<![CDATA[[\\r\\n]]]>"
         multiline = ET.SubElement(comment_elem, 'multiline')
@@ -207,9 +243,12 @@ class CastXMLGenerator:
         if self.multiline_comment:
             comment_elem = ET.SubElement(root, 'comment')
             begin = ET.SubElement(comment_elem, 'begin')
-            begin.text = f"<![CDATA[{self.multiline_comment['begin']}]]>"
+            # Escape special regex characters
+            escaped_begin = self._escape_regex(self.multiline_comment['begin'])
+            begin.text = f"<![CDATA[{escaped_begin}]]>"
             end = ET.SubElement(comment_elem, 'end')
-            end.text = f"<![CDATA[{self.multiline_comment['end']}]]>"
+            escaped_end = self._escape_regex(self.multiline_comment['end'])
+            end.text = f"<![CDATA[{escaped_end}]]>"
             multiline = ET.SubElement(comment_elem, 'multiline')
             multiline.text = "true"
         

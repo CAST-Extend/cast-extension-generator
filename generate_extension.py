@@ -9,7 +9,7 @@ from generators.nuspec_generator import NuspecGenerator
 from generators.template_generator import TemplateGenerator
 
 def load_config(config_path):
-    with open(config_path, 'r') as f:
+    with open(config_path, 'r', encoding='utf-8-sig') as f:
         return json.load(f)
 
 def main():
@@ -45,7 +45,7 @@ def main():
     template_gen = TemplateGenerator(config, extension_dir)
     template_gen.generate_all()
     
-    print(f"\n✓ Extension generated successfully: {extension_dir}")
+    print(f"\n Extension generated successfully: {extension_dir}")
 
 if __name__ == '__main__':
     main()

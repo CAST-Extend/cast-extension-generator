@@ -1,20 +1,71 @@
 {
-  "language": "Java",
+  "_comment_header": "=== CAST Extension Generator Configuration ===",
+  
+  "language": "PowerShell",
   "namespace": "uc",
   "file_no": 18,
   "version": "1.0.0",
   "author": "CAST",
-  "extensions": ["java", "javac"],
-  "tags": "Java Extension",
-  "comment": "//",
+  "extensions": ["ps1", "psm1"],
+  "tags": "PowerShell Extension",
+  
+  "_comment_comments": "Comment syntax for the language",
+  "comment": "#",
   "multiline_comment": {
-    "begin": "/*",
-    "end": "*/"
+    "begin": "<#",
+    "end": "#>"
   },
+  
+  "_comment_objects": [
+    "=== Object Hierarchy Definition ===",
+    "Each object type defines:",
+    "  - parent: The parent object type ('file' for top-level file objects)",
+    "  - pattern_keys: Array of pattern names from grammar.patterns that detect this object type",
+    "                  Use null or [] if object is created automatically (e.g., Program)",
+    "The hierarchy determines containment: Method inside Class inside Program inside File"
+  ],
   "objects": {
-    "Program": "file",
-    "Class": "Program",
-    "Method": "Class",
-    "Function": "Program"
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Class": {
+      "parent": "Program",
+      "pattern_keys": ["class"]
+    },
+    "Method": {
+      "parent": "Class",
+      "pattern_keys": ["method", "class_function"]
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": ["function"]
+    }
+  },
+  
+  "_comment_grammar": [
+    "=== Grammar Patterns ===",
+    "patterns: Regex patterns to detect code structures. Each pattern must have a named group 'name'",
+    "          Pattern keys are referenced in objects.*.pattern_keys",
+    "call_pattern: Regex to detect function/method calls for link creation",
+    "keywords: Language keywords to exclude from call detection"
+  ],
+  "grammar": {
+    "patterns": {
+      "class": [
+        "^\\s*class\\s+(?P<name>\\w+)"
+      ],
+      "function": [
+        "^\\s*function\\s+(?P<name>[\\w-]+)"
+      ],
+      "method": [
+        "^\\s+\\[\\w+\\]\\s*(?P<name>\\w+)\\s*\\("
+      ],
+      "class_function": [
+        "^\\s+hidden\\s+\\[\\w+\\]\\s*(?P<name>\\w+)\\s*\\("
+      ]
+    },
+    "call_pattern": "\\b([\\w-]+)\\s*\\(",
+    "keywords": ["if", "else", "elseif", "for", "foreach", "while", "switch", "try", "catch", "finally", "return", "throw", "param", "begin", "process", "end", "function", "class", "enum"]
   }
 }
