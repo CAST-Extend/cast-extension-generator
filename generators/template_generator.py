@@ -35,6 +35,9 @@ class TemplateGenerator:
         grammar = self.config.get('grammar', {})
         patterns = grammar.get('patterns', {})
         
+        # Block delimiter style (braces, end_keyword, indentation)
+        block_delimiters = grammar.get('block_delimiters', 'braces')
+        
         # Build patterns dict as Python code
         patterns_code = self._build_patterns_code(patterns)
         
@@ -64,6 +67,8 @@ class TemplateGenerator:
             '{{KEYWORDS_SET}}': keywords_set,
             # Object hierarchy
             '{{OBJECTS_CONFIG}}': objects_code,
+            # Block delimiter style
+            '{{BLOCK_DELIMITERS}}': block_delimiters,
         }
     
     def _build_patterns_code(self, patterns):

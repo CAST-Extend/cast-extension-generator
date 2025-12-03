@@ -53,17 +53,17 @@ class {{ANALYZER_CLASS}}(ua.Extension):
         Initializes the analyzer and retrieves configuration from UA options.
         Sets self.active based on whether {{LANGUAGE}} is configured.
         """
-        log.info('[{{LANGUAGE}}] ===== Starting {{LANGUAGE}} analysis =====')
+        log.debug('[{{LANGUAGE}}] Starting {{LANGUAGE}} analysis')
         
         try:
             options = cast.analysers.get_ua_options()  # @UndefinedVariable
             if '{{LANGUAGE}}' in options:
                 self.active = True
                 self.extensions = options['{{LANGUAGE}}'].extensions
-                log.info('[{{LANGUAGE}}] Extensions configured: ' + str(self.extensions))
+                log.debug('[{{LANGUAGE}}] Extensions configured: ' + str(self.extensions))
             else:
                 self.active = False
-                log.info('[{{LANGUAGE}}] No {{LANGUAGE}} configuration found, extension inactive')
+                log.debug('[{{LANGUAGE}}] No {{LANGUAGE}} configuration found, extension inactive')
         except Exception as e:
             # Fallback for unit tests where get_ua_options() may not be available
             log.debug('[{{LANGUAGE}}] Using default configuration: ' + str(e))
@@ -98,7 +98,7 @@ class {{ANALYZER_CLASS}}(ua.Extension):
             log.debug('[{{LANGUAGE}}] Skipping non-{{LANGUAGE}} file: ' + filepath)
             return
         
-        log.info('[{{LANGUAGE}}] Processing file: ' + filepath)
+        log.debug('[{{LANGUAGE}}] Processing file: ' + filepath)
         
         try:
             # Create a module instance for this file
@@ -110,7 +110,7 @@ class {{ANALYZER_CLASS}}(ua.Extension):
             # Store module in library for Phase 2 processing
             self.library.add_module(module)
             
-            log.info('[{{LANGUAGE}}] Light parse complete for: ' + filename)
+            log.debug('[{{LANGUAGE}}] Light parse complete for: ' + filename)
             
         except Exception as e:
             log.warning('[{{LANGUAGE}}] Error during light parse of ' + filepath + ': ' + str(e))
@@ -131,14 +131,8 @@ class {{ANALYZER_CLASS}}(ua.Extension):
         if not self.active:
             return
         
-        log.info('[{{LANGUAGE}}] ===== Starting Phase 2: Full parsing =====')
-        log.info('[{{LANGUAGE}}] Total modules to process: ' + str(len(self.library.get_modules())))
-        log.info('[{{LANGUAGE}}] Total symbols in library: ' + str(len(self.library.symbols)))
-        
-        # Log all registered symbols
-        log.info('[{{LANGUAGE}}] Registered symbols:')
-        for fullname in self.library.symbols.keys():
-            log.info('[{{LANGUAGE}}]   - ' + fullname)
+        log.debug('[{{LANGUAGE}}] Starting Phase 2: Full parsing')
+        log.debug('[{{LANGUAGE}}] Total modules to process: ' + str(len(self.library.get_modules())))
         
         # Statistics for logging
         total_objects = 0
@@ -147,7 +141,7 @@ class {{ANALYZER_CLASS}}(ua.Extension):
         
         for module in self.library.get_modules():
             try:
-                log.info('[{{LANGUAGE}}] Full parsing: ' + str(module.get_path()))
+                log.debug('[{{LANGUAGE}}] Full parsing: ' + str(module.get_path()))
                 
                 # PHASE 2: Full parse for detailed structure
                 module.full_parse()
@@ -172,14 +166,100 @@ class {{ANALYZER_CLASS}}(ua.Extension):
                            str(module.get_path()) + ': ' + str(e))
                 log.debug('[{{LANGUAGE}}] ' + traceback.format_exc())
         
-        # Log summary statistics
-        log.info('[{{LANGUAGE}}] ===== {{LANGUAGE}} Analysis Complete =====')
-        log.info('[{{LANGUAGE}}] Total objects created: ' + str(total_objects))
-        log.info('[{{LANGUAGE}}] Total links created: ' + str(total_links))
-        log.info('[{{LANGUAGE}}] Objects by type:')
+        # =====================================================================
+        # FINAL SUMMARY - Clear and grouped output
+        # =====================================================================
+        log.info('[{{LANGUAGE}}] ')
+        log.info('[{{LANGUAGE}}] ╔══════════════════════════════════════════════════════════════╗')
+        log.info('[{{LANGUAGE}}] ║              {{LANGUAGE}} ANALYSIS SUMMARY                          ║')
+        log.info('[{{LANGUAGE}}] ╚══════════════════════════════════════════════════════════════╝')
+        
+        # --- OBJECTS BY FILE ---
+        log.info('[{{LANGUAGE}}] ')
+        log.info('[{{LANGUAGE}}] ┌─── OBJECTS CREATED (' + str(total_objects) + ' total) ───')
         for module in self.library.get_modules():
-            for obj_type, objs in module.objects_by_type.items():
-                if objs:
-                    log.info('[{{LANGUAGE}}]   - ' + str(obj_type) + ': ' + str(len(objs)))
+            filename = os.path.basename(module.get_path())
+            objects_in_file = []
+            for fullname in module.objects.keys():
+                if fullname != module.get_path():  # Skip Program objects
+                    # Extract short name from fullname
+                    short = fullname.split('.')[-1] if '.' in fullname else fullname
+                    # Get type
+                    for obj_type, objs in module.objects_by_type.items():
+                        if module.objects[fullname] in objs:
+                            objects_in_file.append((short, obj_type))
+                            break
+            if objects_in_file:
+                log.info('[{{LANGUAGE}}] │')
+                log.info('[{{LANGUAGE}}] │  ' + filename)
+                for obj_name, obj_type in objects_in_file:
+                    type_short = obj_type.replace('{{LANGUAGE}}', '')
+                    log.info('[{{LANGUAGE}}] │    └─ ' + obj_name + ' (' + type_short + ')')
+        
+        # --- CALLS GROUPED ---
+        log.info('[{{LANGUAGE}}] │')
+        log.info('[{{LANGUAGE}}] └─── LINKS CREATED (' + str(total_links) + ' total) ───')
+        
+        # Collect all links and group them
+        intra_file_calls = []  # [(caller_file, caller, callee, line), ...]
+        inter_file_calls = []
+        
+        for module in self.library.get_modules():
+            if hasattr(module, 'created_links'):
+                caller_file = os.path.basename(module.get_path())
+                for link in module.created_links:
+                    caller = link['caller'].split('.')[-1] if '.' in link['caller'] else link['caller']
+                    callee = link['callee']
+                    callee_fullname = link.get('callee_fullname', '')
+                    line = link.get('line', 0)
+                    
+                    # Determine if intra or inter file
+                    # callee_fullname format: "filename.lua.Class.method" or "filename.lua.function"
+                    # We need to extract the first part (filename with extension)
+                    callee_file = ''
+                    if callee_fullname:
+                        parts = callee_fullname.split('.')
+                        # Find the file part by looking for common extensions
+                        for idx, part in enumerate(parts):
+                            if part in ('lua', 'go', 'py', 'rb', 'rs', 'java', 'cbl', 'asm', 'mps'):
+                                # The filename is parts before this + extension
+                                callee_file = '.'.join(parts[:idx+1])
+                                break
+                        # If no extension found, use first part
+                        if not callee_file and len(parts) > 0:
+                            callee_file = parts[0]
+                    
+                    if callee_file == caller_file or not callee_file:
+                        intra_file_calls.append((caller_file, caller, callee, line))
+                    else:
+                        inter_file_calls.append((caller_file, caller, callee_file, callee, line))
+        
+        if intra_file_calls:
+            log.info('[{{LANGUAGE}}] ')
+            log.info('[{{LANGUAGE}}]      Intra-file calls (' + str(len(intra_file_calls)) + '):')
+            # Group by file
+            by_file = {}
+            for caller_file, caller, callee, line in intra_file_calls:
+                if caller_file not in by_file:
+                    by_file[caller_file] = []
+                by_file[caller_file].append((caller, callee, line))
+            for filename, calls in sorted(by_file.items()):
+                log.info('[{{LANGUAGE}}]        ' + filename + ':')
+                for caller, callee, line in calls:
+                    log.info('[{{LANGUAGE}}]           ' + caller + ' → ' + callee + ' (L' + str(line) + ')')
+        
+        if inter_file_calls:
+            log.info('[{{LANGUAGE}}] ')
+            log.info('[{{LANGUAGE}}]      Inter-file calls (' + str(len(inter_file_calls)) + '):')
+            for caller_file, caller, callee_file, callee, line in inter_file_calls:
+                log.info('[{{LANGUAGE}}]        ' + caller_file + '::' + caller + ' → ' + callee_file + '::' + callee + ' (L' + str(line) + ')')
+        
+        if not intra_file_calls and not inter_file_calls:
+            log.info('[{{LANGUAGE}}]     (no calls detected)')
+        
+        log.info('[{{LANGUAGE}}] ')
+        log.info('[{{LANGUAGE}}] ════════════════════════════════════════════════════════════════')
+        
         if errors > 0:
-            log.warning('[{{LANGUAGE}}] Modules with errors: ' + str(errors))
+            log.warning('[{{LANGUAGE}}]   Modules with errors: ' + str(errors))
+

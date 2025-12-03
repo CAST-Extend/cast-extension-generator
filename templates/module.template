@@ -164,18 +164,19 @@ class {{LANGUAGE}}Library:
         Resolution priority:
         1. Exact fullname match
         2. Same-file match (if context_module provided)
-        3. First match by short name
+        3. Match by short name (last part of fullname)
+        4. Match by suffix (name appears at end of fullname)
         
         Args:
             name (str): Symbol name to resolve
             context_module: Module providing context for resolution
             
         Returns:
-            CustomObject or None
+            tuple: (CustomObject, fullname) or (None, None)
         """
         # Try exact match first
         if name in self.symbols:
-            return self.symbols[name]
+            return self.symbols[name], name
         
         # Try resolution by short name
         if name in self.symbols_by_name:
@@ -186,13 +187,33 @@ class {{LANGUAGE}}Library:
                 module_prefix = context_module.get_base_name() + '.'
                 for fullname in candidates:
                     if fullname.startswith(module_prefix):
-                        return self.symbols[fullname]
+                        return self.symbols[fullname], fullname
             
             # Return first match if any
             if candidates:
-                return self.symbols[candidates[0]]
+                return self.symbols[candidates[0]], candidates[0]
         
-        return None
+        # Try suffix matching: look for fullnames ending with .name or :name
+        # This handles cases like resolving "new" to "UserService.new"
+        suffix_patterns = ['.' + name, ':' + name]
+        candidates = []
+        for fullname in self.symbols:
+            for suffix in suffix_patterns:
+                if fullname.endswith(suffix):
+                    candidates.append(fullname)
+                    break
+        
+        if candidates:
+            # Prefer same-file match
+            if context_module:
+                module_prefix = context_module.get_filename() + '.'
+                for fullname in candidates:
+                    if fullname.startswith(module_prefix):
+                        return self.symbols[fullname], fullname
+            # Return first match
+            return self.symbols[candidates[0]], candidates[0]
+        
+        return None, None
 
 
 # =============================================================================
@@ -289,6 +310,7 @@ class {{MODULE_CLASS}}:
         # Object storage
         self.objects = {}  # {fullname: CustomObject}
         self.objects_by_type = defaultdict(list)  # {type: [objects]}
+        self.object_lines = {}  # {fullname: (start_line, end_line)} for caller resolution
         
         # Links to create during resolution
         self.pending_links = []  # [(caller_fullname, callee_name, link_type, line)]
@@ -411,12 +433,25 @@ class {{MODULE_CLASS}}:
                     child_patterns.add(pattern_key)
         return child_patterns
     
+    def _get_block_delimiter_style(self):
+        """
+        Get the block delimiter style for this language.
+        
+        Returns:
+            str: 'braces', 'end_keyword', or 'indentation'
+        """
+        return '{{BLOCK_DELIMITERS}}'
+    
     def _build_light_ast(self):
         """
         Build a coarse AST from the source content.
         
         Dynamically handles object hierarchy based on OBJECTS_CONFIG.
-        Tracks brace depth to determine containment.
+        Supports multiple block delimiter styles:
+        - braces: {...} (Go, Java, Rust, C, etc.)
+        - end_keyword: def...end (Ruby, Lua)
+        - indentation: Python-style
+        - sequential: Block ends when next block starts (COBOL, Assembly, MUMPS)
         
         Returns:
             ASTNode: Root node of the AST
@@ -439,51 +474,139 @@ class {{MODULE_CLASS}}:
             for pattern_key in OBJECTS_CONFIG.get(obj_type, {}).get('pattern_keys', []):
                 container_patterns.add(pattern_key)
         
-        # Stack of current containers: [(node, brace_depth_at_start)]
+        # ALL pattern types need to be tracked for end_line calculation
+        all_tracked_patterns = set(patterns.keys())
+        
+        # Determine block delimiter style
+        block_style = self._get_block_delimiter_style()
+        
+        # Stack of current containers: [(node, depth_marker)]
+        # For braces: depth_marker = brace_depth at start
+        # For end_keyword: depth_marker = keyword_depth
+        # For indentation: depth_marker = indentation_level
+        # For sequential: depth_marker = pattern_key (to match same-level blocks)
         container_stack = []
-        brace_depth = 0
+        depth = 0
         
         for i, line in enumerate(lines, 1):
-            # Track brace depth
-            open_braces = line.count('{')
-            close_braces = line.count('}')
+            stripped = line.strip()
             
-            # Before processing, check if any containers have ended
-            new_depth = brace_depth + open_braces - close_braces
-            while container_stack and new_depth <= container_stack[-1][1]:
-                ended_node, _ = container_stack.pop()
-                ended_node.end_line = i
+            # Calculate depth change based on block style
+            if block_style == 'braces':
+                open_count = line.count('{')
+                close_count = line.count('}')
+                new_depth = depth + open_count - close_count
+                
+                # Check if any containers have ended
+                while container_stack and new_depth <= container_stack[-1][1]:
+                    ended_node, _ = container_stack.pop()
+                    ended_node.end_line = i
+                
+                depth = new_depth
+                depth_at_match = depth - open_count  # Depth before the open brace
+                should_track = open_count > 0
+                
+            elif block_style == 'end_keyword':
+                # Count opening keywords (class, module, def, do, if, etc.)
+                # and closing keywords (end)
+                open_keywords = 0
+                close_keywords = 0
+                
+                # Opening patterns - be careful with word boundaries
+                # Includes both Ruby (class, module, def) and Lua (function) keywords
+                if re.match(r'^\s*(class|module|def|do|if|unless|case|while|until|for|begin|function)\b', line):
+                    open_keywords = 1
+                # Handle block openers like { or do
+                if re.search(r'\bdo\s*(\|[^|]*\|)?\s*$', line):
+                    open_keywords = 1
+                
+                # Closing keyword
+                if re.match(r'^\s*end\b', stripped):
+                    close_keywords = 1
+                
+                new_depth = depth + open_keywords - close_keywords
+                
+                # Check if any containers have ended (when we see 'end')
+                if close_keywords > 0 and container_stack:
+                    ended_node, _ = container_stack.pop()
+                    ended_node.end_line = i
+                
+                depth = new_depth
+                depth_at_match = depth - open_keywords
+                should_track = open_keywords > 0
+                
+            elif block_style == 'indentation':
+                # Calculate indentation level
+                if stripped:  # Non-empty line
+                    indent = len(line) - len(line.lstrip())
+                    new_depth = indent
+                    
+                    # Check if any containers have ended (decreased indentation)
+                    while container_stack and new_depth <= container_stack[-1][1] and stripped:
+                        ended_node, _ = container_stack.pop()
+                        ended_node.end_line = i - 1  # Previous line ends the block
+                    
+                    depth = new_depth
+                else:
+                    new_depth = depth  # Keep current depth for empty lines
+                
+                depth_at_match = depth
+                should_track = True  # Always track in indentation mode
+                
+            elif block_style == 'sequential':
+                # Sequential mode: blocks end when the next block at same level starts
+                # Used for COBOL paragraphs, Assembly labels, MUMPS routines, etc.
+                # We'll check for matches first, then close previous blocks
+                depth_at_match = 0
+                should_track = True  # Always track in sequential mode
+                # Note: block closing happens AFTER pattern matching below
             
-            brace_depth = new_depth
+            else:
+                # Default to braces behavior
+                depth_at_match = 0
+                should_track = True
             
             # Now check for pattern matches
-            # Use a flag to ensure only ONE pattern matches per line (prevents GUID duplicates)
             matched_on_line = False
             for pattern_key, pattern_list in patterns.items():
                 if matched_on_line:
-                    break  # Already found a match on this line, skip remaining pattern types
+                    break
                 for pattern in pattern_list:
                     match = pattern.match(line)
                     if match:
                         name = match.group('name') if 'name' in match.groupdict() else match.group(1)
                         node = ASTNode(pattern_key, name, start_line=i)
                         
-                        # Check for receiver/parent group in pattern (for Go-style methods, Rust impl, etc.)
-                        # This allows patterns like: func (c *Config) Get() to extract "Config" as receiver
+                        # Check for receiver/parent group in pattern
                         if 'receiver' in match.groupdict() and match.group('receiver'):
-                            # Clean the receiver name (remove pointer * if present)
                             receiver = match.group('receiver').lstrip('*')
                             node.properties['receiver'] = receiver
                         
-                        # Determine where to add this node based on OBJECTS_CONFIG hierarchy
+                        # Determine where to add this node based on hierarchy
                         obj_type = PATTERN_TO_OBJECT_TYPE.get(pattern_key)
                         parent_type = OBJECT_PARENTS.get(obj_type, 'Program') if obj_type else 'Program'
+                        
+                        # SEQUENTIAL MODE: Close previous block of same or higher level
+                        # before adding the new one
+                        if block_style == 'sequential' and container_stack:
+                            # Close all blocks at same level or lower in hierarchy
+                            # A new block at same level closes the previous one
+                            while container_stack:
+                                prev_node, prev_pattern = container_stack[-1]
+                                prev_obj_type = PATTERN_TO_OBJECT_TYPE.get(prev_node.type)
+                                prev_parent = OBJECT_PARENTS.get(prev_obj_type, 'Program') if prev_obj_type else 'Program'
+                                
+                                # If previous block is at same level (same parent), close it
+                                # Also close if new block is at a higher level
+                                if prev_parent == parent_type or parent_type in ('Program', 'file'):
+                                    ended = container_stack.pop()
+                                    ended[0].end_line = i - 1
+                                else:
+                                    break
                         
                         # Find the appropriate parent in the stack
                         added = False
                         if parent_type != 'Program' and parent_type != 'file':
-                            # Look for a matching container in the stack
-                            # First, try to find exact match for parent type
                             for container_node, _ in reversed(container_stack):
                                 container_obj_type = PATTERN_TO_OBJECT_TYPE.get(container_node.type)
                                 if container_obj_type == parent_type:
@@ -491,22 +614,30 @@ class {{MODULE_CLASS}}:
                                     added = True
                                     break
                             
-                            # If no exact match, add to nearest container (for languages like Ruby)
                             if not added and container_stack:
                                 nearest_container, _ = container_stack[-1]
                                 nearest_container.add_child(node)
                                 added = True
                         
                         if not added:
-                            # Add to root (will become child of Program)
                             root.add_child(node)
                         
-                        # If this is a container type, push it onto the stack
-                        if pattern_key in container_patterns:
-                            container_stack.append((node, brace_depth - open_braces))
+                        # Track this construct for end_line calculation
+                        if pattern_key in all_tracked_patterns and should_track:
+                            # For sequential mode, store pattern_key as depth_marker
+                            if block_style == 'sequential':
+                                container_stack.append((node, pattern_key))
+                            else:
+                                container_stack.append((node, depth_at_match))
                         
                         matched_on_line = True
-                        break  # Only match first pattern for this pattern_key on this line
+                        break
+        
+        # Close any remaining open containers at end of file
+        while container_stack:
+            ended_node, _ = container_stack.pop()
+            if ended_node.end_line == 0:
+                ended_node.end_line = len(lines)
         
         return root
     
@@ -606,16 +737,19 @@ class {{MODULE_CLASS}}:
         if node.start_line > 0:
             self._set_bookmark(cast_obj, node.start_line, node.end_line or node.start_line)
         
-        self._register_object(fullname, cast_obj, node.name, '{{LANGUAGE}}' + obj_type)
+        self._register_object(fullname, cast_obj, node.name, '{{LANGUAGE}}' + obj_type, node.start_line, node.end_line or node.start_line)
         
         # Recursively extract children (e.g., methods inside classes)
         child_name_prefix = parent_name_prefix + node.name + '.'
         for child in node.children:
             self._extract_object(child, cast_obj, child_name_prefix)
     
-    def _register_object(self, fullname, obj, short_name=None, obj_type=None):
+    def _register_object(self, fullname, obj, short_name=None, obj_type=None, start_line=0, end_line=0):
         """Register an object in the module's symbol table."""
         self.objects[fullname] = obj
+        # Store line range for caller resolution
+        if start_line > 0:
+            self.object_lines[fullname] = (start_line, end_line if end_line > 0 else start_line)
         # Store by type name (passed explicitly since get_type() may not work after save)
         type_name = obj_type if obj_type else 'unknown'
         self.objects_by_type[type_name].append(obj)
@@ -624,7 +758,7 @@ class {{MODULE_CLASS}}:
             if not hasattr(self, '_short_names'):
                 self._short_names = {}
             self._short_names[fullname] = short_name
-        log.info('[{{LANGUAGE}}] Created object: ' + fullname + ' (type: ' + type_name + ')')
+        log.debug('[{{LANGUAGE}}] Created object: ' + fullname + ' (type: ' + type_name + ')')
 
     def _generate_guid(self, cast_type, fullname, start_line=0):
         """Create deterministic GUIDs combining type, file path and location."""
@@ -642,6 +776,50 @@ class {{MODULE_CLASS}}:
                 obj.save_position(bookmark)
         except Exception as e:
             log.info('[{{LANGUAGE}}] Bookmark error: ' + str(e))
+    
+    def _build_line_context_map(self):
+        """
+        Build a mapping from line numbers to their containing function/method fullname.
+        
+        Uses self.object_lines (populated during light_parse) to determine which 
+        callable (function, method) contains each line.
+        Lines outside any callable map to the program (file path).
+        
+        Returns:
+            dict: {line_number: fullname_of_containing_callable}
+        """
+        line_to_context = {}
+        
+        # Use object_lines populated during _extract_object
+        # Filter to only include callable types (Functions, Methods)
+        callables = []
+        for fullname, (start_line, end_line) in self.object_lines.items():
+            # Skip Program objects (they are containers, not callables)
+            if fullname == self.path:
+                continue
+            callables.append({
+                'fullname': fullname,
+                'start_line': start_line,
+                'end_line': end_line
+            })
+        
+        # Sort by specificity: innermost (smallest range) first
+        # This ensures nested functions are matched before their parents
+        callables.sort(key=lambda x: (x['end_line'] - x['start_line'], x['start_line']))
+        
+        # Build the line-to-context map
+        # For each callable, map its line range to its fullname
+        for callable_info in callables:
+            start = callable_info['start_line']
+            end = callable_info['end_line']
+            fullname = callable_info['fullname']
+            
+            for line in range(start, end + 1):
+                # Only set if not already set (inner functions take precedence)
+                if line not in line_to_context:
+                    line_to_context[line] = fullname
+        
+        return line_to_context
     
     # =========================================================================
     # PHASE 2: FULL PARSING
@@ -675,6 +853,9 @@ class {{MODULE_CLASS}}:
         
         Call pattern is configurable via config_input.json grammar section.
         Stores discovered calls in pending_links for later resolution.
+        
+        Uses the AST built during light_parse to determine which function/method
+        contains each call, ensuring proper caller context for link creation.
         """
         if not self.source_content:
             return
@@ -684,10 +865,27 @@ class {{MODULE_CLASS}}:
         if not call_pattern_str:
             return
         
-        call_pattern = re.compile(call_pattern_str)
+        # Compile pattern with appropriate flags
+        # Use VERBOSE mode if pattern contains comments (#) or explicit newlines
+        # This allows patterns like:
+        #   (?:
+        #       \bPERFORM\s+(?P<callee>\w+)  # PERFORM call
+        #     | \bCALL\s+(?P<callee2>\w+)    # CALL statement  
+        #   )
+        try:
+            if '\n' in call_pattern_str or '#' in call_pattern_str:
+                call_pattern = re.compile(call_pattern_str, re.VERBOSE | re.IGNORECASE)
+            else:
+                call_pattern = re.compile(call_pattern_str, re.IGNORECASE)
+        except re.error as e:
+            log.warning('[{{LANGUAGE}}] Invalid call_pattern regex: ' + str(e))
+            return
+        
+        # Build a line-to-context mapping from AST
+        # This tells us which function/method/class contains each line
+        line_to_context = self._build_line_context_map()
         
         lines = self.source_content.splitlines()
-        current_context = self.path  # Default context is the program
         
         for i, line in enumerate(lines, 1):
             # Skip comment lines (basic detection)
@@ -695,24 +893,39 @@ class {{MODULE_CLASS}}:
             if stripped.startswith('{{COMMENT}}') or stripped.startswith('#'):
                 continue
             
+            # Determine the caller context for this line
+            current_context = line_to_context.get(i, self.path)
+            
             # Find all potential calls in the line
             for match in call_pattern.finditer(line):
-                # Try different named groups (callee, callee1, callee2, callee3, func_callee, etc.)
+                # Extract callee name from the match
+                # Strategy: 
+                # 1. First, iterate ALL named groups and take the first non-None value
+                # 2. Fallback to numbered groups (1, 2, 3...)
+                # This handles patterns with alternatives where different groups match
                 callee_name = None
-                for group_name in ['callee', 'callee1', 'callee2', 'callee3', 'func_callee', 'name']:
-                    try:
-                        callee_name = match.group(group_name)
-                        if callee_name:
-                            break
-                    except IndexError:
-                        continue
                 
-                # Fallback to group 1 if no named group found
+                # Method 1: Check all named groups from groupdict()
+                # This is the most reliable for patterns with alternatives like:
+                # (?:PERFORM\s+(?P<callee>...)|CALL\s+(?P<callee2>...))
+                groups = match.groupdict()
+                if groups:
+                    for group_name, value in groups.items():
+                        if value is not None:
+                            callee_name = value
+                            break
+                
+                # Method 2: Fallback to numbered groups if no named group matched
                 if not callee_name:
-                    try:
-                        callee_name = match.group(1)
-                    except IndexError:
-                        continue
+                    # Try groups 1, 2, 3... in order
+                    for group_idx in range(1, len(match.groups()) + 1):
+                        try:
+                            value = match.group(group_idx)
+                            if value is not None:
+                                callee_name = value
+                                break
+                        except IndexError:
+                            break
                 
                 if not callee_name:
                     continue
@@ -720,6 +933,17 @@ class {{MODULE_CLASS}}:
                 # Skip common keywords that look like function calls
                 if callee_name.lower() in self._get_keywords():
                     continue
+                
+                # Skip self-references (function calling itself on definition line)
+                # This prevents "function Foo.new(...)" from creating a call new -> new
+                caller_short = current_context.split('.')[-1] if '.' in current_context else current_context
+                # Also handle : separator (Lua methods)
+                if ':' in caller_short:
+                    caller_short = caller_short.split(':')[-1]
+                if callee_name == caller_short:
+                    # Check if this is likely the definition line (contains function/def keyword)
+                    if re.search(r'\b(function|def|func|sub|procedure)\b', stripped, re.IGNORECASE):
+                        continue
                 
                 # Add to pending links
                 self.pending_links.append({
@@ -770,11 +994,12 @@ class {{MODULE_CLASS}}:
         for link_info in self.pending_links:
             callee_name = link_info['callee']
             
-            # Try to resolve the callee
-            callee_obj = library.resolve_symbol(callee_name, self)
+            # Try to resolve the callee (returns tuple: obj, fullname)
+            callee_obj, callee_fullname = library.resolve_symbol(callee_name, self)
             
             if callee_obj:
                 link_info['resolved_callee'] = callee_obj
+                link_info['resolved_callee_fullname'] = callee_fullname
                 resolved_links.append(link_info)
             else:
                 log.debug('[{{LANGUAGE}}] Unresolved reference: ' + callee_name)
@@ -832,8 +1057,17 @@ class {{MODULE_CLASS}}:
             
             if caller_obj and callee_obj:
                 try:
-                    # Log the call relationship
-                    log.info('[{{LANGUAGE}}] CALL: ' + caller_name + ' -> ' + callee_name + ' (line ' + str(line) + ')')
+                    # Store link info for summary (will be logged at end of analysis)
+                    if not hasattr(self, 'created_links'):
+                        self.created_links = []
+                    self.created_links.append({
+                        'caller': caller_fullname,
+                        'callee': callee_name,
+                        'callee_fullname': link_info.get('resolved_callee_fullname', ''),
+                        'line': line
+                    })
+                    
+                    log.debug('[{{LANGUAGE}}] CALL: ' + caller_name + ' -> ' + callee_name + ' (line ' + str(line) + ')')
                     
                     # Create bookmark for the call location
                     bookmark = None

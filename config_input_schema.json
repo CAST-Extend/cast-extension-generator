@@ -75,6 +75,12 @@
       "description": "Language-specific grammar patterns for parsing",
       "required": ["patterns", "call_pattern", "keywords"],
       "properties": {
+        "block_delimiters": {
+          "type": "string",
+          "enum": ["braces", "end_keyword", "indentation"],
+          "default": "braces",
+          "description": "How code blocks are delimited: 'braces' ({...}), 'end_keyword' (def...end), or 'indentation' (Python-style)"
+        },
         "patterns": {
           "type": "object",
           "description": "Named patterns to detect code structures. Each pattern is a regex with a named group (?P<name>...) to capture the object name. Pattern names are referenced in objects.*.pattern_keys",
