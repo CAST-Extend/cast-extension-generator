@@ -1,33 +1,14 @@
 {
   "examples": [
     {
-      "name": "Python Extension",
-      "config": {
-        "language": "Python",
-        "namespace": "uc",
-        "file_no": 7,
-        "version": "1.0.0",
-        "author": "CAST",
-        "extensions": ["py", "pyw"],
-        "tags": "Python parser static-analysis",
-        "comment": "#",
-        "objects": {
-          "Program": "file",
-          "Class": "Program",
-          "Method": "Class",
-          "Function": "Program",
-          "Lambda": "Program"
-        }
-      }
-    },
-    {
-      "name": "Java Extension",
+      "name": "Java - Classic OOP with Braces",
+      "description": "Standard enterprise OOP language. Containers (Package, Class, Interface) organize the hierarchy, callables (Method, Constructor) enable link detection.",
       "config": {
         "language": "Java",
-        "namespace": "labs",
-        "file_no": 12,
-        "version": "2.1.0",
-        "author": "CAST Labs",
+        "namespace": "uc",
+        "file_no": 42,
+        "version": "1.0.0",
+        "author": "CAST",
         "extensions": ["java"],
         "tags": "Java OOP enterprise",
         "comment": "//",
@@ -36,34 +17,434 @@
           "end": "*/"
         },
         "objects": {
-          "Program": "file",
-          "Package": "Program",
-          "Class": "Package",
-          "Interface": "Package",
-          "Method": "Class",
-          "Constructor": "Class",
-          "Field": "Class",
-          "Annotation": "Class"
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Package": { "parent": "Program", "pattern_keys": ["package"] },
+          "Class": { "parent": "Program", "pattern_keys": ["class"] },
+          "Interface": { "parent": "Program", "pattern_keys": ["interface"] },
+          "Method": { "parent": "Class", "pattern_keys": ["method"] },
+          "Constructor": { "parent": "Class", "pattern_keys": ["constructor"] }
+        },
+        "grammar": {
+          "block_delimiters": "braces",
+          "patterns": {
+            "package": ["^\\s*package\\s+(?P<name>[A-Za-z_][\\w\\.]*)\\s*;"],
+            "class": ["^\\s*(?:public|protected|private)?\\s*(?:abstract\\s+|final\\s+)?class\\s+(?P<name>[A-Za-z_]\\w*)"],
+            "interface": ["^\\s*(?:public|protected|private)?\\s*interface\\s+(?P<name>[A-Za-z_]\\w*)"],
+            "method": ["^\\s*(?:public|protected|private)?\\s*(?:static\\s+|final\\s+|abstract\\s+|synchronized\\s+|native\\s+)*[A-Za-z_$][\\w$\\<\\>\\[\\]]*\\s+(?P<name>[A-Za-z_]\\w*)\\s*\\("],
+            "constructor": ["^\\s*(?:public|protected|private)?\\s*(?P<name>[A-Z][A-Za-z0-9_]*)\\s*\\("]
+          },
+          "call_pattern": "\\b([A-Za-z_][\\w]*)\\s*\\(",
+          "keywords": ["if", "else", "for", "while", "switch", "case", "default", "try", "catch", "finally", "return", "throw", "new", "class", "interface", "enum", "extends", "implements", "package", "import", "this", "super", "synchronized", "native", "public", "private", "protected", "static"]
         }
       }
     },
+
     {
-      "name": "COBOL Extension",
+      "name": "Go - Systems Language with Method Receivers",
+      "description": "Modern systems language. Struct/Interface are containers, Function/Method are callables. Uses special 'receiver' capture group to associate methods with their struct.",
+      "config": {
+        "language": "Go",
+        "namespace": "uc",
+        "file_no": 32,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["go"],
+        "tags": "Go Golang systems concurrency",
+        "comment": "//",
+        "multiline_comment": {
+          "begin": "/*",
+          "end": "*/"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Struct": { "parent": "Program", "pattern_keys": ["struct"] },
+          "Interface": { "parent": "Program", "pattern_keys": ["interface"] },
+          "Function": { "parent": "Program", "pattern_keys": ["function"] },
+          "Method": { "parent": "Struct", "pattern_keys": ["method"] }
+        },
+        "grammar": {
+          "block_delimiters": "braces",
+          "patterns": {
+            "struct": ["^\\s*type\\s+(?P<name>\\w+)\\s+struct\\s*\\{"],
+            "interface": ["^\\s*type\\s+(?P<name>\\w+)\\s+interface\\s*\\{"],
+            "function": ["^\\s*func\\s+(?!\\()(?P<name>\\w+)\\s*\\("],
+            "method": ["^\\s*func\\s+\\(\\w+\\s+\\*?(?P<receiver>\\w+)\\)\\s+(?P<name>\\w+)\\s*\\("]
+          },
+          "call_pattern": "\\b(\\w+)\\s*\\(",
+          "keywords": ["if", "else", "for", "range", "switch", "case", "default", "select", "break", "continue", "return", "go", "defer", "func", "type", "struct", "interface", "map", "chan", "package", "import", "var", "const", "nil", "true", "false", "make", "new", "append", "len", "cap", "copy", "delete", "panic", "recover"]
+        }
+      }
+    },
+
+    {
+      "name": "Rust - Modern Systems with Impl Blocks",
+      "description": "Memory-safe systems language. Struct is a container, Impl groups methods, Function/Method are callables. Note: Enum/Trait omitted as they don't contain callable code.",
+      "config": {
+        "language": "Rust",
+        "namespace": "uc",
+        "file_no": 33,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["rs"],
+        "tags": "Rust systems memory-safe ownership",
+        "comment": "//",
+        "multiline_comment": {
+          "begin": "/*",
+          "end": "*/"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Struct": { "parent": "Program", "pattern_keys": ["struct"] },
+          "Impl": { "parent": "Program", "pattern_keys": ["impl_block"] },
+          "Function": { "parent": "Program", "pattern_keys": ["function", "pub_function"] },
+          "Method": { "parent": "Impl", "pattern_keys": ["impl_method"] }
+        },
+        "grammar": {
+          "block_delimiters": "braces",
+          "patterns": {
+            "struct": ["^\\s*(?:pub\\s+)?struct\\s+(?P<name>\\w+)"],
+            "impl_block": ["^\\s*impl(?:<[^>]+>)?\\s+(?P<name>\\w+)(?:<[^>]+>)?\\s*\\{"],
+            "function": ["^\\s*fn\\s+(?P<name>\\w+)\\s*[<(]"],
+            "pub_function": ["^\\s*pub\\s+fn\\s+(?P<name>\\w+)\\s*[<(]"],
+            "impl_method": ["^\\s+(?:pub\\s+)?fn\\s+(?P<name>\\w+)\\s*[<(]"]
+          },
+          "call_pattern": "\\b(\\w+)\\s*[!]?\\s*\\(",
+          "keywords": ["if", "else", "match", "loop", "while", "for", "in", "break", "continue", "return", "fn", "let", "mut", "const", "static", "struct", "enum", "trait", "impl", "self", "Self", "super", "use", "mod", "pub", "crate", "extern", "async", "await", "move", "ref", "where", "type", "unsafe", "dyn", "true", "false", "Some", "None", "Ok", "Err"]
+        }
+      }
+    },
+
+    {
+      "name": "Ruby - Dynamic OOP with end keyword",
+      "description": "Elegant OOP scripting language using 'end' to close blocks. Shows modules, classes, instance methods, class methods (self.), and special method characters (?!).",
+      "config": {
+        "language": "Ruby",
+        "namespace": "uc",
+        "file_no": 31,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["rb", "rake"],
+        "tags": "Ruby scripting OOP dynamic",
+        "comment": "#",
+        "multiline_comment": {
+          "begin": "=begin",
+          "end": "=end"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Class": { "parent": "Program", "pattern_keys": ["class"] },
+          "Module": { "parent": "Program", "pattern_keys": ["module"] },
+          "Method": { "parent": "Class", "pattern_keys": ["instance_method"] },
+          "ClassMethod": { "parent": "Module", "pattern_keys": ["class_method"] },
+          "Function": { "parent": "Program", "pattern_keys": ["function"] }
+        },
+        "grammar": {
+          "block_delimiters": "end_keyword",
+          "patterns": {
+            "class": ["^\\s*class\\s+(?P<name>[A-Z]\\w*)"],
+            "module": ["^\\s*module\\s+(?P<name>[A-Z]\\w*)"],
+            "instance_method": ["^\\s+def\\s+(?P<name>[a-z_][\\w?!]*)"],
+            "class_method": ["^\\s+def\\s+self\\.(?P<name>[\\w?!]+)"],
+            "function": ["^def\\s+(?P<name>[a-z_][\\w?!]*)"]
+          },
+          "call_pattern": "\\b(\\w+)[?!]?\\s*[\\(]?",
+          "keywords": ["if", "else", "elsif", "end", "unless", "case", "when", "while", "until", "for", "do", "begin", "rescue", "ensure", "raise", "return", "yield", "class", "module", "def", "self", "super", "nil", "true", "false", "and", "or", "not", "in", "require", "include", "extend", "attr_reader", "attr_writer", "attr_accessor", "private", "protected", "public"]
+        }
+      }
+    },
+
+    {
+      "name": "Lua - Lightweight Scripting with end keyword",
+      "description": "Minimal scripting language popular in game development. Simple object model with global and local functions using 'end' blocks.",
+      "config": {
+        "language": "Lua",
+        "namespace": "uc",
+        "file_no": 30,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["lua"],
+        "tags": "Lua scripting game-dev embedded",
+        "comment": "--",
+        "multiline_comment": {
+          "begin": "--[[",
+          "end": "]]"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Function": { "parent": "Program", "pattern_keys": ["function", "local_function"] }
+        },
+        "grammar": {
+          "block_delimiters": "end_keyword",
+          "patterns": {
+            "function": ["^\\s*function\\s+(?P<name>[\\w.:]+)\\s*\\("],
+            "local_function": ["^\\s*local\\s+function\\s+(?P<name>\\w+)\\s*\\("]
+          },
+          "call_pattern": "\\b(\\w+)\\s*\\(",
+          "keywords": ["if", "then", "else", "elseif", "end", "for", "while", "do", "repeat", "until", "return", "local", "function", "nil", "true", "false", "and", "or", "not", "in", "break"]
+        }
+      }
+    },
+
+    {
+      "name": "Julia - Scientific Computing with Macros and Multiple Dispatch",
+      "description": "High-performance language for scientific computing. Features multiple dispatch, parametric types, macros, and abstract types.",
+      "config": {
+        "language": "Julia",
+        "namespace": "uc",
+        "file_no": 51,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["jl"],
+        "tags": "Julia scientific computing high-performance",
+        "comment": "#",
+        "multiline_comment": {
+          "begin": "#=",
+          "end": "=#"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Module": { "parent": "Program", "pattern_keys": ["module", "baremodule"] },
+          "Struct": { "parent": "Program", "pattern_keys": ["struct", "mutable_struct", "abstract_type", "primitive_type"] },
+          "Function": { "parent": "Program", "pattern_keys": ["function_block", "function_oneline", "function_typed", "function_parametric"] },
+          "Method": { "parent": "Struct", "pattern_keys": ["method_dispatch"] },
+          "Macro": { "parent": "Program", "pattern_keys": ["macro_def"] }
+        },
+        "grammar": {
+          "block_delimiters": "end_keyword",
+          "patterns": {
+            "module": ["^\\s*module\\s+(?P<name>[A-Z][A-Za-z0-9_]*)"],
+            "baremodule": ["^\\s*baremodule\\s+(?P<name>[A-Z][A-Za-z0-9_]*)"],
+            "struct": ["^\\s*struct\\s+(?P<name>[A-Z][A-Za-z0-9_]*)\\s*(?:<:|\\{|$)", "^\\s*@kwdef\\s+struct\\s+(?P<name>[A-Z][A-Za-z0-9_]*)"],
+            "mutable_struct": ["^\\s*mutable\\s+struct\\s+(?P<name>[A-Z][A-Za-z0-9_]*)"],
+            "abstract_type": ["^\\s*abstract\\s+type\\s+(?P<name>[A-Z][A-Za-z0-9_]*)"],
+            "primitive_type": ["^\\s*primitive\\s+type\\s+(?P<name>[A-Z][A-Za-z0-9_]*)\\s+\\d+"],
+            "function_block": ["^\\s*function\\s+(?P<name>[a-z_][A-Za-z0-9_!]*)\\s*\\("],
+            "function_oneline": ["^\\s*(?P<name>[a-z_][A-Za-z0-9_!]*)\\s*\\([^)]*\\)\\s*=\\s*[^=]"],
+            "function_typed": ["^\\s*function\\s+(?P<name>[a-z_][A-Za-z0-9_!]*)\\s*\\([^)]*\\)::[A-Za-z_][A-Za-z0-9_{}]*"],
+            "function_parametric": ["^\\s*function\\s+(?P<name>[a-z_][A-Za-z0-9_!]*)\\s*\\{[A-Za-z_,\\s<:]+\\}\\s*\\("],
+            "method_dispatch": ["^\\s*function\\s+(?P<name>[a-z_][A-Za-z0-9_!]*)\\s*\\([^:]+::[A-Z][A-Za-z0-9_{}]*"],
+            "macro_def": ["^\\s*macro\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\("]
+          },
+          "call_pattern": "\\b([a-z_][A-Za-z0-9_!]*)\\s*\\(",
+          "keywords": ["if", "else", "elseif", "end", "for", "while", "begin", "let", "do", "try", "catch", "finally", "return", "break", "continue", "function", "macro", "module", "struct", "mutable", "abstract", "primitive", "type", "where", "import", "using", "export", "const", "local", "global", "true", "false", "nothing"]
+        }
+      }
+    },
+
+    {
+      "name": "Forth - Stack-based with Word Definitions",
+      "description": "Unique stack-based language with 'words' instead of functions. Uses ':' to start and ';' to end word definitions. Shows vocabularies and structures.",
+      "config": {
+        "language": "Forth",
+        "namespace": "uc",
+        "file_no": 50,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["f", "fs", "fth", "4th", "forth"],
+        "tags": "Forth stack-based embedded",
+        "comment": "\\",
+        "multiline_comment": {
+          "begin": "(",
+          "end": ")"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Word": { "parent": "Program", "pattern_keys": ["colon_word", "create_word", "defer_word"] },
+          "Macro": { "parent": "Program", "pattern_keys": ["immediate_word"] },
+          "Module": { "parent": "Program", "pattern_keys": ["vocabulary"] },
+          "Struct": { "parent": "Program", "pattern_keys": ["struct"] }
+        },
+        "grammar": {
+          "block_delimiters": "end_keyword",
+          "patterns": {
+            "colon_word": ["^\\s*:\\s+(?P<name>[^\\s]+)", "^:\\s+(?P<name>[^\\s;]+)\\s+"],
+            "create_word": ["^\\s*create\\s+(?P<name>[^\\s]+)", "^\\s*value\\s+(?P<name>[^\\s]+)"],
+            "defer_word": ["^\\s*defer\\s+(?P<name>[^\\s]+)"],
+            "immediate_word": ["^\\s*:\\s+(?P<name>[^\\s]+)\\s+.*\\bimmediate\\b"],
+            "vocabulary": ["^\\s*vocabulary\\s+(?P<name>[^\\s]+)"],
+            "struct": ["^\\s*struct\\s+(?P<name>[^\\s]+)"]
+          },
+          "call_pattern": "\\b([A-Za-z_][A-Za-z0-9_-]*)\\b",
+          "keywords": [":", ";", "if", "else", "then", "do", "loop", "+loop", "begin", "until", "while", "repeat", "case", "of", "endof", "endcase", "exit", "recurse", "immediate", "create", "does>", "variable", "constant", "value", "defer", "is", "to", "dup", "drop", "swap", "over", "rot", "pick", "roll", "depth", "@", "!", "+", "-", "*", "/", "mod", "and", "or", "xor", "not", "true", "false"]
+        }
+      }
+    },
+
+    {
+      "name": "Mojo - AI/ML Systems with Indentation and Decorators",
+      "description": "Python superset for AI/ML with systems-level performance. Uses indentation for blocks like Python. Shows structs, traits, decorators (@value, @parameter), and ownership semantics.",
+      "config": {
+        "language": "Mojo",
+        "namespace": "uc",
+        "file_no": 52,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["mojo", "🔥"],
+        "tags": "Mojo AI ML high-performance Python-like",
+        "comment": "#",
+        "multiline_comment": {
+          "begin": "\"\"\"",
+          "end": "\"\"\""
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Struct": { "parent": "Program", "pattern_keys": ["struct", "struct_generic"] },
+          "Function": { "parent": "Program", "pattern_keys": ["fn_def", "def_func", "fn_generic"] },
+          "Method": { "parent": "Struct", "pattern_keys": ["fn_method", "def_method", "dunder_method", "static_method"] }
+        },
+        "grammar": {
+          "block_delimiters": "indentation",
+          "patterns": {
+            "struct": ["^\\s*struct\\s+(?P<name>[A-Z][A-Za-z0-9_]*)\\s*:", "^\\s*struct\\s+(?P<name>[A-Z][A-Za-z0-9_]*)\\s*\\("],
+            "struct_generic": ["^\\s*struct\\s+(?P<name>[A-Z][A-Za-z0-9_]*)\\s*\\[[^\\]]+\\]\\s*:"],
+            "fn_def": ["^fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\(", "^fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*->"],
+            "def_func": ["^def\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\("],
+            "fn_generic": ["^fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\[\\s*[A-Za-z_][^\\]]*\\]\\s*\\("],
+            "fn_method": ["^\\s+fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*(?:inout\\s+)?self", "^\\s+fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*(?:owned\\s+)?self"],
+            "def_method": ["^\\s+def\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*(?:inout\\s+)?self"],
+            "dunder_method": ["^\\s+fn\\s+(?P<name>__[a-z_]+__)\\s*\\(\\s*(?:inout\\s+)?self"],
+            "static_method": ["^\\s+@staticmethod\\s*\\n\\s*fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\("]
+          },
+          "call_pattern": "\\b([a-z_][A-Za-z0-9_]*)\\s*\\(",
+          "keywords": ["if", "else", "elif", "for", "while", "with", "try", "except", "finally", "raise", "return", "pass", "break", "continue", "fn", "def", "struct", "trait", "alias", "var", "let", "inout", "owned", "borrowed", "self", "True", "False", "None", "and", "or", "not", "in", "is", "import", "from", "as"]
+        }
+      }
+    },
+
+    {
+      "name": "COBOL - Mainframe Legacy with Sequential Structure",
+      "description": "Enterprise mainframe language with division/section/paragraph hierarchy. Uses 'sequential' block delimiter - no nested blocks, code flows sequentially. Shows PERFORM and CALL patterns.",
       "config": {
         "language": "COBOL",
         "namespace": "uc",
-        "file_no": 3,
-        "version": "1.5.2",
+        "file_no": 23,
+        "version": "1.0.0",
         "author": "CAST",
         "extensions": ["cbl", "cob", "cpy"],
-        "tags": "COBOL mainframe legacy",
-        "comment": "*>",
+        "tags": "COBOL mainframe legacy enterprise",
+        "comment": "*",
+        "multiline_comment": {
+          "begin": "*>",
+          "end": "<*"
+        },
         "objects": {
-          "Program": "file",
-          "Section": "Program",
-          "Paragraph": "Section",
-          "DataItem": "Program",
-          "FileDescriptor": "Program"
+          "Program": { "parent": "file", "pattern_keys": ["program_id"] },
+          "Division": { "parent": "Program", "pattern_keys": ["division"] },
+          "Section": { "parent": "Division", "pattern_keys": ["section"] },
+          "Paragraph": { "parent": "Section", "pattern_keys": ["paragraph"] }
+        },
+        "grammar": {
+          "block_delimiters": "sequential",
+          "patterns": {
+            "program_id": ["^\\s*PROGRAM-ID\\.\\s+(?P<name>[A-Za-z0-9-]+)"],
+            "division": ["^\\s*(?P<name>IDENTIFICATION|ENVIRONMENT|DATA|PROCEDURE)\\s+DIVISION"],
+            "section": ["^\\s*(?P<name>[A-Za-z0-9-]+)\\s+SECTION\\."],
+            "paragraph": ["^\\s{7,}(?P<name>[A-Za-z][A-Za-z0-9-]*)\\.$"]
+          },
+          "call_pattern": "(?:\\bPERFORM\\s+(?P<callee1>[A-Za-z0-9-]+)|\\bCALL\\s+['\"](?P<callee2>[A-Za-z0-9-]+)['\"])",
+          "keywords": ["MOVE", "COMPUTE", "ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "IF", "ELSE", "END-IF", "DISPLAY", "PERFORM", "CALL", "EVALUATE", "WHEN", "STOP", "EXIT", "GO", "TO", "THRU", "IDENTIFICATION", "ENVIRONMENT", "DATA", "PROCEDURE", "DIVISION", "SECTION"]
+        }
+      }
+    },
+
+    {
+      "name": "MIPS Assembly - Low-level with Labels",
+      "description": "RISC assembly language for MIPS processors. Uses 'sequential' blocks with labels as function markers. Shows jal/j call patterns for assembly-style calls.",
+      "config": {
+        "language": "MIPS",
+        "namespace": "uc",
+        "file_no": 21,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["asm", "s"],
+        "tags": "MIPS Assembly low-level RISC",
+        "comment": "#",
+        "multiline_comment": {
+          "begin": "/*",
+          "end": "*/"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Function": { "parent": "Program", "pattern_keys": ["label_function"] },
+          "Label": { "parent": "Program", "pattern_keys": ["data_label"] }
+        },
+        "grammar": {
+          "block_delimiters": "sequential",
+          "patterns": {
+            "label_function": ["^(?P<name>[A-Za-z_]\\w*):\\s*(?:#.*)?$"],
+            "data_label": ["^\\s+(?P<name>[A-Za-z_]\\w*):\\s*\\."]
+          },
+          "call_pattern": "\\b(?:jal|j)\\s+(?P<callee>[A-Za-z_]\\w+)",
+          "keywords": ["add", "addi", "sub", "subi", "mul", "div", "and", "or", "xor", "nor", "sll", "srl", "sra", "lw", "sw", "lb", "sb", "lui", "beq", "bne", "bgt", "blt", "bgez", "bltz", "j", "jr", "jal", "jalr", "move", "li", "la", "nop", "syscall", "break", "data", "text", "globl", "word", "byte", "ascii", "asciiz", "space"]
+        }
+      }
+    },
+
+    {
+      "name": "REXX - Mainframe Scripting with Routines",
+      "description": "IBM mainframe scripting language. Uses 'sequential' blocks with labeled routines. Shows CALL and function-call patterns.",
+      "config": {
+        "language": "REXX",
+        "namespace": "uc",
+        "file_no": 24,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["rexx", "rex", "rx"],
+        "tags": "REXX mainframe scripting IBM",
+        "comment": "/*",
+        "multiline_comment": {
+          "begin": "/*",
+          "end": "*/"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Routine": { "parent": "Program", "pattern_keys": ["routine_label"] },
+          "Label": { "parent": "Program", "pattern_keys": ["simple_label"] }
+        },
+        "grammar": {
+          "block_delimiters": "sequential",
+          "patterns": {
+            "routine_label": ["^(?P<name>[A-Za-z_][A-Za-z0-9_]*):\\s*$"],
+            "simple_label": ["^(?P<name>[A-Za-z_][A-Za-z0-9_]*):\\s*(?:procedure|/\\*)"]
+          },
+          "call_pattern": "(?:\\bcall\\s+(?P<callee1>[A-Za-z_][A-Za-z0-9_]*)|(?P<callee2>[A-Za-z_][A-Za-z0-9_]*)\\s*\\()",
+          "keywords": ["call", "do", "end", "if", "then", "else", "select", "when", "otherwise", "exit", "return", "say", "parse", "pull", "push", "queue", "arg", "var", "value", "with", "signal", "procedure", "expose", "iterate", "leave", "nop", "drop"]
+        }
+      }
+    },
+
+    {
+      "name": "PowerShell - Windows Scripting with Classes",
+      "description": "Windows automation language mixing shell and OOP. Uses braces for blocks. Shows classes with methods, standalone functions, and hidden class members.",
+      "config": {
+        "language": "PowerShell",
+        "namespace": "uc",
+        "file_no": 18,
+        "version": "1.0.0",
+        "author": "CAST",
+        "extensions": ["ps1", "psm1"],
+        "tags": "PowerShell Windows scripting automation",
+        "comment": "#",
+        "multiline_comment": {
+          "begin": "<#",
+          "end": "#>"
+        },
+        "objects": {
+          "Program": { "parent": "file", "pattern_keys": [] },
+          "Class": { "parent": "Program", "pattern_keys": ["class"] },
+          "Method": { "parent": "Class", "pattern_keys": ["method", "class_function"] },
+          "Function": { "parent": "Program", "pattern_keys": ["function"] }
+        },
+        "grammar": {
+          "block_delimiters": "braces",
+          "patterns": {
+            "class": ["^\\s*class\\s+(?P<name>\\w+)"],
+            "function": ["^\\s*function\\s+(?P<name>[\\w-]+)"],
+            "method": ["^\\s+\\[\\w+\\]\\s*(?P<name>\\w+)\\s*\\("],
+            "class_function": ["^\\s+hidden\\s+\\[\\w+\\]\\s*(?P<name>\\w+)\\s*\\("]
+          },
+          "call_pattern": "\\b([\\w-]+)\\s*\\(",
+          "keywords": ["if", "else", "elseif", "for", "foreach", "while", "switch", "try", "catch", "finally", "return", "throw", "param", "begin", "process", "end", "function", "class", "enum"]
         }
       }
     }

@@ -146,6 +146,97 @@ Then run the test file `tests/test_language.py` from your IDE's test explorer.
 | `comment` | string | ✓ | Single-line comment prefix |
 | `multiline_comment` | object | ✓ | Multi-line comment delimiters |
 
+### Choosing Which Objects to Create
+
+Before defining your `objects` configuration, understand what makes an object **useful** in CAST/Imaging.
+
+#### The Two Types of Useful Objects
+
+| Type | Description | Examples | Role in Imaging |
+|------|-------------|----------|-----------------|
+| **Callables** | Code that can be executed/called | Function, Method, Procedure, Constructor | Source AND target of call links |
+| **Containers** | Organize and group callables | Class, Module, Package, Struct | Define hierarchy, appear in navigation tree |
+
+#### What This Generator Creates
+
+The generator creates **callLinks** between objects. A callLink represents "A calls B":
+
+```
+┌─────────────┐     callLink      ┌─────────────┐
+│  Function A │ ────────────────► │  Function B │
+│   (caller)  │                   │   (callee)  │
+└─────────────┘                   └─────────────┘
+```
+
+For an object to participate in call analysis, it must be either:
+- A **caller** (contains code that calls other functions)
+- A **callee** (can be called by other code)
+
+#### Objects You Should Create
+
+✅ **Functions/Methods** - The core callable units of your language
+```json
+"Function": { "parent": "Program", "pattern_keys": ["function"] },
+"Method": { "parent": "Class", "pattern_keys": ["method"] }
+```
+
+✅ **Containers that group callables** - Organize the hierarchy
+```json
+"Class": { "parent": "Program", "pattern_keys": ["class"] },
+"Module": { "parent": "Program", "pattern_keys": ["module"] }
+```
+
+✅ **Constructors** (if your language has them) - They are callable
+```json
+"Constructor": { "parent": "Class", "pattern_keys": ["constructor"] }
+```
+
+#### Objects You Should NOT Create
+
+❌ **Imports/Includes** - Declarations, not executable code
+- The generator doesn't create import/dependency links
+- They add noise without value
+
+❌ **Annotations/Decorators** - Metadata, not callable
+- Better represented as properties on the annotated object
+- Cannot be source or target of calls
+
+❌ **Fields/Attributes** - Data, not callable
+- Unless your language allows field access as function calls
+- Consider if they provide architectural value
+
+❌ **Local Variables/Parameters** - Too granular
+- Scope too limited, no cross-file relevance
+- Would bloat the model without insights
+
+❌ **Type definitions** (Enum, Typedef, Interface without methods)
+- These define types but don't contain executable code
+- Exception: Interface with default method implementations
+
+#### Decision Flowchart
+
+```
+Is this code element...
+    │
+    ├─► Callable (can be invoked)? ──────────────► ✅ CREATE IT
+    │
+    ├─► A container for callables? ──────────────► ✅ CREATE IT (for hierarchy)
+    │
+    ├─► A declaration (import, typedef)? ────────► ❌ SKIP IT
+    │
+    └─► Data-only (field, variable)? ────────────► ❌ SKIP IT (usually)
+```
+
+#### Real-World Examples
+
+| Language | Recommended Objects | Excluded |
+|----------|--------------------| ---------|
+| Java | Package, Class, Interface, Method, Constructor | Import, Field, Annotation, Enum |
+| Python | Module, Class, Function, Method | Import, Decorator, Variable |
+| Go | Struct, Interface, Function, Method | Import, Type alias, Const |
+| COBOL | Program, Section, Paragraph | Data Division items |
+| Rust | Struct, Impl, Function, Method | Enum, Trait, Use statement |
+
 ### Objects Configuration
 
 The `objects` section defines the **hierarchy of code elements** your extension will detect.
@@ -496,6 +587,193 @@ class MyLangApplicationExtension(ApplicationLevelExtension):
                 if table.get_name().lower() in func.get_name().lower():
                     create_link('useLink', func, table)
 ```
+
+---
+
+## Extending the MetaModel
+
+The generator creates a basic MetaModel with types and categories for your objects. For advanced use cases, you may want to extend the generated MetaModel XML files to add custom **categories**, **properties**, or **link types**.
+
+### When to Extend the MetaModel
+
+Consider extending when you need:
+
+- **Custom properties** on objects (e.g., complexity metrics, security flags)
+- **New link types** beyond `callLink` (e.g., `useLink`, `readLink`, `inheritLink`)
+- **APM categories** for dashboard integration
+- **Quality rule categories** for CAST rules
+
+### MetaModel Files Location
+
+After generation, you'll find these XML files in `configuration/`:
+
+```
+configuration/
+├── Languages/
+│   └── mylang/
+│       └── MyLangLanguagePattern.xml    # Language patterns
+└── SDK/
+    └── MyLangMetaModel.xml              # Types, categories, properties
+```
+
+### Adding Custom Categories
+
+Categories are inherited attributes that group objects. Add them in `MyLangMetaModel.xml`:
+
+```xml
+<!-- Add after existing categories -->
+
+<!-- Category for objects that access databases -->
+<category name="CAST_MyLang_DatabaseAccessor" id="YOUR_UNIQUE_ID">
+    <description>Objects that access database resources</description>
+    <property name="accessedTables" type="stringList" id="YOUR_PROP_ID">
+        <description>List of database tables accessed</description>
+    </property>
+</category>
+
+<!-- Category for security-sensitive objects -->
+<category name="CAST_MyLang_SecuritySensitive" id="YOUR_UNIQUE_ID_2">
+    <description>Objects handling sensitive data</description>
+    <property name="securityLevel" type="integer" id="YOUR_PROP_ID_2">
+        <description>Security level (1=low, 2=medium, 3=high)</description>
+    </property>
+</category>
+```
+
+Then inherit the category in your object types:
+
+```xml
+<type name="CAST_MyLang_Function" id="...">
+    <!-- ... existing attributes ... -->
+    <inheritedCategory name="CAST_MyLang_DatabaseAccessor"/>
+    <inheritedCategory name="CAST_MyLang_SecuritySensitive"/>
+</type>
+```
+
+### Adding Custom Properties
+
+Properties store data on objects. Define them within categories:
+
+```xml
+<category name="CAST_MyLang_Metrics" id="YOUR_UNIQUE_ID">
+    <description>Custom metrics for MyLang objects</description>
+    
+    <!-- Integer property -->
+    <property name="cyclomaticComplexity" type="integer" id="YOUR_PROP_ID">
+        <description>Cyclomatic complexity of the function</description>
+    </property>
+    
+    <!-- String property -->
+    <property name="author" type="string" id="YOUR_PROP_ID_2">
+        <description>Author from code comments</description>
+    </property>
+    
+    <!-- String list property -->
+    <property name="annotations" type="stringList" id="YOUR_PROP_ID_3">
+        <description>List of annotations on this object</description>
+    </property>
+    
+    <!-- Reference to another object -->
+    <property name="overrides" type="reference" id="YOUR_PROP_ID_4">
+        <description>Reference to overridden method</description>
+    </property>
+</category>
+```
+
+### Adding Custom Link Types
+
+Beyond `callLink`, you can create custom link types for specific relationships:
+
+```xml
+<!-- In your MetaModel XML -->
+<link name="CAST_MyLang_InheritLink" id="YOUR_LINK_ID">
+    <description>Inheritance relationship</description>
+    <!-- Link properties if needed -->
+</link>
+
+<link name="CAST_MyLang_UseLink" id="YOUR_LINK_ID_2">
+    <description>Usage relationship (reads/writes)</description>
+    <property name="accessType" type="string" id="YOUR_PROP_ID">
+        <description>read, write, or readwrite</description>
+    </property>
+</link>
+```
+
+Then use them in your code:
+
+```python
+from cast.analysers import create_link
+
+# In your module or application level code
+create_link('CAST_MyLang_InheritLink', child_class, parent_class)
+create_link('CAST_MyLang_UseLink', function, variable)
+```
+
+### Setting Properties in Code
+
+After defining properties, set them in your Python code:
+
+```python
+# In your module class
+def _create_object(self, name, obj_type, line, end_line):
+    obj = super()._create_object(name, obj_type, line, end_line)
+    
+    # Set custom properties
+    obj.set_property('cyclomaticComplexity', self._calculate_complexity())
+    obj.set_property('author', self._extract_author_comment())
+    obj.set_property('annotations', self._get_annotations())
+    
+    return obj
+```
+
+### ID Management
+
+Every category, property, type, and link needs a **unique ID**. Use the same range as your `file_no`:
+
+```
+Your reserved range: 2,193,000 - 2,193,999
+
+Suggested allocation:
+- Types:      2,193,000 - 2,193,099
+- Categories: 2,193,100 - 2,193,499
+- Properties: 2,193,500 - 2,193,799
+- Links:      2,193,800 - 2,193,899
+```
+
+### Integrating with CAST Dashboards (APM)
+
+To make your objects appear in CAST dashboards, inherit APM categories:
+
+```xml
+<type name="CAST_MyLang_Function" id="...">
+    <!-- For transaction tracking -->
+    <inheritedCategory name="APM Methods"/>
+    <inheritedCategory name="APM Client Language Artifacts"/>
+    
+    <!-- For inventory views -->
+    <inheritedCategory name="APM Inventory Methods"/>
+</type>
+
+<type name="CAST_MyLang_Class" id="...">
+    <inheritedCategory name="APM Sources"/>
+    <inheritedCategory name="APM Classes"/>
+</type>
+```
+
+### Validation
+
+After modifying the MetaModel, validate it:
+
+1. Open **UA Package Assistant**:
+   ```
+   C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CAST 8.x\UAPackageAssistant.exe
+   ```
+
+2. Browse to your extension folder
+
+3. Check **"Validate package MetaModel file only"**
+
+4. Click **Validate** and check for errors
 
 ---
 
