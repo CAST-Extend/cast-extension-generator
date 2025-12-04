@@ -26,7 +26,11 @@ def main():
     namespace = config['namespace']
     techname = language.lower()
     
-    extension_dir = Path(output_dir) / f"com.castsoftware.{namespace}.{techname}"
+    # If namespace is 'product', don't include it in the extension name
+    if namespace == 'product':
+        extension_dir = Path(output_dir) / f"com.castsoftware.{techname}"
+    else:
+        extension_dir = Path(output_dir) / f"com.castsoftware.{namespace}.{techname}"
     
     print(f"Generating CAST extension: {extension_dir}")
     

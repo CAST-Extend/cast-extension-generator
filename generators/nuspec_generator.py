@@ -10,9 +10,18 @@ class NuspecGenerator:
         with open(template_path, 'r', encoding='utf-8') as f:
             template = f.read()
         
+        # Build extension ID: for 'product' namespace, don't include namespace in ID
+        namespace = self.config['namespace']
+        language_lower = self.config['language'].lower()
+        if namespace == 'product':
+            extension_id = f"com.castsoftware.{language_lower}"
+        else:
+            extension_id = f"com.castsoftware.{namespace}.{language_lower}"
+        
         replacements = {
-            '{{NAMESPACE}}': self.config['namespace'],
-            '{{LANGUAGE_LOWER}}': self.config['language'].lower(),
+            '{{EXTENSION_ID}}': extension_id,
+            '{{NAMESPACE}}': namespace,
+            '{{LANGUAGE_LOWER}}': language_lower,
             '{{VERSION}}': self.config['version'],
             '{{LANGUAGE}}': self.config['language'],
             '{{AUTHOR}}': self.config['author'],

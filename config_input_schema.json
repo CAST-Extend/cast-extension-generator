@@ -9,8 +9,8 @@
     },
     "namespace": {
       "type": "string",
-      "enum": ["uc", "labs"],
-      "description": "Extension namespace: uc or labs"
+      "enum": ["uc", "labs", "product"],
+      "description": "Extension namespace: uc, labs, or product (product = no namespace in extension name)"
     },
     "file_no": {
       "type": "integer",

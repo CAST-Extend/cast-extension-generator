@@ -137,7 +137,7 @@ Then run the test file `tests/test_language.py` from your IDE's test explorer.
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `language` | string | ✓ | Language name (Python, Ruby, Go…) |
-| `namespace` | string | ✓ | Extension namespace ("uc" or "labs") |
+| `namespace` | string | ✓ | Extension namespace: "uc", "labs", or "product" (see below) |
 | `file_no` | integer | ✓ | Unique file number used for CAST IDs |
 | `version` | string | ✓ | Semantic version (e.g., "1.0.0") |
 | `author` | string | ✓ | Extension author |
@@ -145,6 +145,16 @@ Then run the test file `tests/test_language.py` from your IDE's test explorer.
 | `tags` | string | ✓ | NuGet package tags |
 | `comment` | string | ✓ | Single-line comment prefix |
 | `multiline_comment` | object | ✓ | Multi-line comment delimiters |
+
+#### Namespace Values
+
+The `namespace` field determines the extension naming convention:
+
+| Value | Extension ID | Use Case |
+|-------|-------------|----------|
+| `uc` | `com.castsoftware.uc.language` | User Community extensions (community-contributed) |
+| `labs` | `com.castsoftware.labs.language` | Labs extensions (experimental/preview) |
+| `product` | `com.castsoftware.language` | Product extensions (official CAST extensions) |
 
 ### Choosing Which Objects to Create
 
