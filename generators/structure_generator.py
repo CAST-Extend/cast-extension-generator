@@ -47,4 +47,4 @@ class StructureGenerator:
         readme = self.output_dir / "README.md"
         readme.write_text(f"# {self.language} Extension\n\nCAST Extension for {self.language} analysis.\n", encoding='utf-8')
         
-        print(f"✓ Created base structure: {self.output_dir}")
+        print(f"[OK] Created base structure: {self.output_dir}")

@@ -28,8 +28,9 @@ class TemplateGenerator:
         extensions = self.config.get('extensions', [])
         extensions_list = ', '.join([f"'.{ext}'" for ext in extensions])
         
-        # Comment syntax
+        # Comment syntax - escape backslashes for Python string safety
         comment = self.config.get('comment', '//')
+        comment_escaped = comment.replace('\\', '\\\\')
         
         # Grammar patterns (new format with multiple patterns per type)
         grammar = self.config.get('grammar', {})
@@ -60,7 +61,7 @@ class TemplateGenerator:
             '{{MODULE_FILE}}': f'{self.techname}_module',
             '{{MODULE_FILE_IMPORT}}': f'{self.techname}_module',
             '{{EXTENSIONS_LIST}}': extensions_list,
-            '{{COMMENT}}': comment,
+            '{{COMMENT}}': comment_escaped,
             # Grammar patterns (new format)
             '{{PATTERNS_DICT}}': patterns_code,
             '{{CALL_PATTERN}}': call_pattern,
@@ -154,7 +155,7 @@ class TemplateGenerator:
         
         output_file = self.output_dir / f"{self.techname}_module.py"
         output_file.write_text(content, encoding='utf-8')
-        print(f"✓ Generated: {output_file}")
+        print(f"[OK] Generated: {output_file}")
     
     def _generate_analyser_level(self):
         """Generate the analyzer level file."""
@@ -163,7 +164,7 @@ class TemplateGenerator:
         
         output_file = self.output_dir / f"{self.techname}_analyser_level.py"
         output_file.write_text(content, encoding='utf-8')
-        print(f"✓ Generated: {output_file}")
+        print(f"[OK] Generated: {output_file}")
     
     def _generate_application_level(self):
         """Generate the application level file."""
@@ -172,7 +173,7 @@ class TemplateGenerator:
         
         output_file = self.output_dir / f"{self.techname}_application_level.py"
         output_file.write_text(content, encoding='utf-8')
-        print(f"✓ Generated: {output_file}")
+        print(f"[OK] Generated: {output_file}")
     
     def _generate_test(self):
         """Generate the test file."""
@@ -182,4 +183,4 @@ class TemplateGenerator:
         # Write test file
         output_file = self.output_dir / "tests" / f"test_{self.techname}.py"
         output_file.write_text(content, encoding='utf-8')
-        print(f"✓ Generated: {output_file}")
+        print(f"[OK] Generated: {output_file}")

@@ -26,4 +26,4 @@ class NuspecGenerator:
         
         output_file = self.output_dir / "plugin.nuspec"
         output_file.write_text(content, encoding='utf-8')
-        print(f"✓ Generated: {output_file}")
+        print(f"[OK] Generated: {output_file}")

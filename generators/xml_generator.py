@@ -272,10 +272,10 @@ class CastXMLGenerator:
         metamodel_file = lang_dir / f"{self.language}MetaModel.xml"
         with open(metamodel_file, 'w', encoding='utf-8') as f:
             f.write(metamodel_content)
-        print(f"✓ Generated: {metamodel_file}")
+        print(f"[OK] Generated: {metamodel_file}")
         
         pattern_content = self.generate_language_pattern()
         pattern_file = lang_dir / f"{self.language}LanguagePattern.xml"
         with open(pattern_file, 'w', encoding='utf-8') as f:
             f.write(pattern_content)
-        print(f"✓ Generated: {pattern_file}")
+        print(f"[OK] Generated: {pattern_file}")

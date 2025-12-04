@@ -836,8 +836,6 @@ class {{MODULE_CLASS}}:
         
         Override _extract_calls() and _extract_references() for custom logic.
         """
-        log.debug('[{{LANGUAGE}}] Full parsing: ' + self.path)
-        
         if not self.source_content:
             return
         

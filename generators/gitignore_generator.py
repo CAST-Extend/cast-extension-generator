@@ -21,4 +21,4 @@ class GitignoreGenerator:
 """
         gitignore_file = self.output_dir / ".gitignore"
         gitignore_file.write_text(gitignore_content, encoding='utf-8')
-        print(f"✓ Generated: {gitignore_file}")
+        print(f"[OK] Generated: {gitignore_file}")
