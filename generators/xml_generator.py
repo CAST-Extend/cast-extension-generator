@@ -28,10 +28,9 @@ class CastXMLGenerator:
         return self.object_rids[name]
     
     def _get_parent_name(self, parent_value):
-        if parent_value == 'file':
-            return f"Enlighten{self.language}"
-        else:
-            return f"{self.language}{parent_value}"
+        # All types must have the same Enlighten parent - EnlightenTree is for visualization only
+        # The parent hierarchy in objects config is for code containment, not Enlighten tree
+        return f"Enlighten{self.language}"
     
     def _get_inherited_categories(self, obj_name, parent_value):
         categories = ["UAObject", f"{self.language} Artifacts"]

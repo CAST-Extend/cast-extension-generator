@@ -15,6 +15,7 @@
     <tags>{{TAGS}}</tags>
     <dependencies>
       <dependency id="CAIP" version="8.3.3" />
+      <dependency id="com.castsoftware.internal.platform" version="0.9.21" />
     </dependencies>
   </metadata>
   <files>

@@ -99,7 +99,66 @@ Before generating the extension, you need to reserve a unique `file_no` for your
 python generate_extension.py config_mylang.json output_folder
 ```
 
-### 4. Validate the MetaModel Configuration (Optional)
+### 4. Deploy to CAST Imaging
+
+To use your extension in CAST Imaging:
+
+1. **Create the NuGet package**
+   
+   Navigate to your generated extension folder and run the batch file:
+   ```bash
+   cd output_folder/com.castsoftware.uc.mylang
+   .\plugin-to-nupkg.bat
+   ```
+   This creates a `.nupkg` file in the extension folder.
+
+2. **Copy the package to CAST extensions folder**
+   
+   Copy the generated `.nupkg` file to:
+   ```
+   C:\Cast\ProgramData\CAST\AIP-Console-Standalone\data\shared\extensions\
+   ```
+
+3. **Handle conflicts with existing extensions (if needed)**
+   
+   If your extension conflicts with an existing CAST product extension (e.g., you're creating a custom Go extension while the official Go extension exists), you need to disable the conflicting extension:
+   
+   1. Open **CAST Admin Center**
+   2. Go to **Extensions** → **Strategy** → **All Extensions**
+   3. Search for the product extension you want to disable (e.g., `com.castsoftware.go`)
+   4. Click the **Deny List** toggle to disable it
+
+4. **Run the analysis**
+   
+   Once the extension is deployed (and conflicts resolved):
+   1. Create a new application or use an existing one in CAST Console
+   2. Run **Fast Scan** to detect source files
+   3. Run **Deep Analysis** to analyze the code with your extension
+
+### Creating an Analysis Unit Manually
+
+Since the generated extension doesn't include a DMT discoverer, files won't be automatically detected during Fast Scan. You need to manually create an Analysis Unit:
+
+1. **Run Fast Scan** on your application
+
+2. **Wait for the Configuration tab** to become active (left panel, grayed out until Fast Scan completes)
+
+3. **Go to Configuration** → Click on **Universal Technology**
+
+4. **Click the +ADD button** to create a new Analysis Unit
+
+5. **Fill in the fields:**
+   - **Name**: Your technology name (e.g., "Go", "Lua", "MyLang")
+   - **Package**: `main_sources`
+   - **Select Languages**: Choose your technology from the dropdown list
+
+6. **Save and run Deep Analysis**
+
+Your extension's analyzer will now be triggered for the files matching your language's extensions.
+
+> **Note:** This manual approach works for development and testing. For production/distribution, you'll want to implement a proper DMT discoverer so the extension is fully "plug and play" without manual configuration.
+
+### 5. Validate the MetaModel Configuration (Optional)
 
 If you want to verify that the generated MetaModel XML files are valid before running tests, you can use the UA Package Assistant:
 
