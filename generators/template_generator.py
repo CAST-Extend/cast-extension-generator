@@ -84,7 +84,7 @@ class TemplateGenerator:
         
         lines = []
         for obj_type, pattern_list in patterns.items():
-            patterns_str = ', '.join([f"r'{p}'" for p in pattern_list])
+            patterns_str = ', '.join([repr(p) for p in pattern_list])
             lines.append(f"            '{obj_type}': [{patterns_str}],")
         
         return '\n'.join(lines)

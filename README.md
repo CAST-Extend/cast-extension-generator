@@ -141,18 +141,20 @@ Since the generated extension doesn't include a DMT discoverer, files won't be a
 
 1. **Run Fast Scan** on your application
 
-2. **Wait for the Configuration tab** to become active (left panel, grayed out until Fast Scan completes)
+2. **Start Deep Analysis**
 
-3. **Go to Configuration** → Click on **Universal Technology**
+3. **Wait for the first second of the Analysis phase** to begin
 
-4. **Click the +ADD button** to create a new Analysis Unit
+4. **Go to the Config tab** (gear icon on the left) → Click on **Universal Technology**
 
-5. **Fill in the fields:**
+5. **Click the +ADD button** to create a new Analysis Unit
+
+6. **Fill in the fields:**
    - **Name**: Your technology name (e.g., "Go", "Lua", "MyLang")
    - **Package**: `main_sources`
    - **Select Languages**: Choose your technology from the dropdown list
 
-6. **Save and run Deep Analysis**
+7. **Save and continue with Deep Analysis**
 
 Your extension's analyzer will now be triggered for the files matching your language's extensions.
 
