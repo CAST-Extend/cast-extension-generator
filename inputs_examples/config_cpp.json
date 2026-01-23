@@ -1,0 +1,374 @@
+{
+  "_comment_header": "=== CAST Extension Generator - C++ ===",
+  "_description": "Comprehensive C++ support with classes, templates, namespaces, STL, modern C++11/14/17/20 features",
+  
+  "language": "CPP",
+  "namespace": "uc",
+  "file_no": 105,
+  "version": "1.0.6",
+  "author": "CAST",
+  "extensions": ["cpp", "cc", "cxx", "c++", "hpp", "hh", "hxx", "h++", "h"],
+  "tags": "C++ CPP Object-Oriented Systems Programming Templates STL",
+  
+  "comment": "//",
+  "multiline_comment": {
+    "begin": "/*",
+    "end": "*/"
+  },
+  
+  "external_imports": true,
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Namespace": {
+      "parent": "Program",
+      "pattern_keys": ["namespace_def", "nested_namespace", "anonymous_namespace", "inline_namespace"]
+    },
+    "Class": {
+      "parent": "Namespace",
+      "pattern_keys": [
+        "class_def",
+        "class_inheritance",
+        "class_template",
+        "class_template_specialization",
+        "class_template_partial_spec",
+        "struct_def",
+        "struct_template",
+        "class_forward_decl",
+        "class_final"
+      ]
+    },
+    "Method": {
+      "parent": "Class",
+      "pattern_keys": [
+        "method_def",
+        "method_declaration",
+        "constructor",
+        "constructor_explicit",
+        "constructor_delegating",
+        "destructor",
+        "method_const",
+        "method_const_noexcept",
+        "method_virtual",
+        "method_pure_virtual",
+        "method_override",
+        "method_final",
+        "method_static",
+        "method_inline",
+        "method_constexpr",
+        "method_noexcept",
+        "operator_overload",
+        "conversion_operator",
+        "method_deleted",
+        "method_defaulted",
+        "method_volatile",
+        "method_ref_qualified"
+      ]
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": [
+        "function_def",
+        "function_declaration",
+        "function_template",
+        "function_inline",
+        "function_constexpr",
+        "function_noexcept",
+        "function_extern_c",
+        "lambda_expression",
+        "lambda_mutable"
+      ]
+    },
+    "Variable": {
+      "parent": "Program",
+      "pattern_keys": [
+        "global_variable",
+        "static_variable",
+        "extern_variable",
+        "constexpr_variable",
+        "thread_local_variable"
+      ]
+    },
+    "Enum": {
+      "parent": "Program",
+      "pattern_keys": [
+        "enum_def",
+        "enum_class",
+        "enum_struct",
+        "enum_forward_decl"
+      ]
+    },
+    "Template": {
+      "parent": "Program",
+      "pattern_keys": [
+        "template_class",
+        "template_function",
+        "template_specialization",
+        "template_partial_specialization",
+        "template_variable",
+        "template_alias"
+      ]
+    },
+    "Typedef": {
+      "parent": "Program",
+      "pattern_keys": [
+        "typedef_def",
+        "using_alias"
+      ]
+    },
+    "Concept": {
+      "parent": "Program",
+      "pattern_keys": [
+        "concept_def"
+      ]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "namespace_def": [
+        "^namespace\\s+(?P<n>[A-Za-z_][A-Za-z0-9_]*)\\s*\\{",
+        "^namespace\\s+(?P<n>[A-Za-z_][A-Za-z0-9_]*)\\s*$"
+      ],
+      "nested_namespace": [
+        "^namespace\\s+(?P<n>[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*)\\s*\\{"
+      ],
+      "anonymous_namespace": [
+        "^namespace\\s*\\{",
+        "^namespace\\s+(?P<n>)\\s*\\{"
+      ],
+      "inline_namespace": [
+        "^inline\\s+namespace\\s+(?P<n>[A-Za-z_][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "class_def": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "class_inheritance": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*(?:(?:public|protected|private)\\s+)?[A-Za-z_][A-Za-z0-9_:<>,\\s]*\\s*\\{",
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+final\\s*:\\s*(?:(?:public|protected|private)\\s+)?[A-Za-z_][A-Za-z0-9_:<>,\\s]*\\s*\\{"
+      ],
+      "class_final": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+final\\s*\\{",
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+final\\s*;"
+      ],
+      "class_template": [
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;",
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "class_template_specialization": [
+        "^template\\s*<>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*\\{",
+        "^template\\s*<>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*;"
+      ],
+      "class_template_partial_spec": [
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*\\{"
+      ],
+      "struct_def": [
+        "^struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;",
+        "^struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$",
+        "^struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*(?:(?:public|protected|private)\\s+)?[A-Za-z_][A-Za-z0-9_:<>,\\s]*\\s*\\{"
+      ],
+      "struct_template": [
+        "^template\\s*<[^>]+>\\s*struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^template\\s*<[^>]+>\\s*struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;"
+      ],
+      "class_forward_decl": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;",
+        "^struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;",
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;"
+      ],
+      "method_def": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*$"
+      ],
+      "method_declaration": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*;"
+      ],
+      "constructor": [
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*;",
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*:\\s*[A-Za-z_]",
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*noexcept\\s*[{;:]"
+      ],
+      "constructor_explicit": [
+        "^\\s*explicit\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "constructor_delegating": [
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*:\\s*[A-Z][A-Za-z0-9_]*\\s*\\("
+      ],
+      "destructor": [
+        "^\\s*~(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\)\\s*\\{",
+        "^\\s*~(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\)\\s*;",
+        "^\\s*virtual\\s+~(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\)",
+        "^\\s*~(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\)\\s*noexcept",
+        "^\\s*~(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\)\\s*=\\s*(?:default|delete)"
+      ],
+      "method_const": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*const\\s*[{;]",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*const\\s*$"
+      ],
+      "method_const_noexcept": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*const\\s+noexcept\\s*[{;]"
+      ],
+      "method_virtual": [
+        "^\\s*virtual\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "method_pure_virtual": [
+        "^\\s*virtual\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*(?:const\\s*)?=\\s*0\\s*;"
+      ],
+      "method_override": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*(?:const\\s+)?override\\s*[{;]"
+      ],
+      "method_final": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*(?:const\\s+)?final\\s*[{;]",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*(?:const\\s+)?override\\s+final\\s*[{;]"
+      ],
+      "method_static": [
+        "^\\s*static\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "method_inline": [
+        "^\\s*inline\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "method_constexpr": [
+        "^\\s*constexpr\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)",
+        "^\\s*constexpr\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "method_noexcept": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*noexcept\\s*[{;]"
+      ],
+      "method_volatile": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*volatile\\s*[{;]"
+      ],
+      "method_ref_qualified": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*&&\\s*[{;]",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*&\\s*[{;]"
+      ],
+      "operator_overload": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+operator(?P<n>[+\\-*/=%<>!&|^~\\[\\]()])\\s*\\([^)]*\\)",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+operator(?P<n><<|>>|\\+\\+|--|==|!=|<=|>=|&&|\\|\\||,)\\s*\\([^)]*\\)",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+operator(?P<n>\\+=|-=|\\*=|/=|%=|&=|\\|=|\\^=|<<=|>>=)\\s*\\([^)]*\\)",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+operator(?P<n>->|->\\*)\\s*\\([^)]*\\)",
+        "^\\s*operator\\s+(?P<n>new|delete|new\\[\\]|delete\\[\\])\\s*\\([^)]*\\)"
+      ],
+      "conversion_operator": [
+        "^\\s*operator\\s+(?P<n>[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+)\\s*\\([^)]*\\)",
+        "^\\s*explicit\\s+operator\\s+(?P<n>[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+)\\s*\\([^)]*\\)"
+      ],
+      "method_deleted": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*=\\s*delete\\s*;",
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*=\\s*delete\\s*;"
+      ],
+      "method_defaulted": [
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*=\\s*default\\s*;",
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*=\\s*default\\s*;"
+      ],
+      "function_def": [
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*$"
+      ],
+      "function_declaration": [
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*;"
+      ],
+      "function_template": [
+        "^template\\s*<[^>]+>\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "function_inline": [
+        "^inline\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "function_constexpr": [
+        "^constexpr\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)",
+        "^consteval\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "function_noexcept": [
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*noexcept\\s*[{;]"
+      ],
+      "function_extern_c": [
+        "^extern\\s+\"C\"\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "lambda_expression": [
+        "^\\s*auto\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=\\s*\\[[^\\]]*\\]\\s*\\([^)]*\\)",
+        "^\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=\\s*\\[[^\\]]*\\]\\s*\\([^)]*\\)"
+      ],
+      "lambda_mutable": [
+        "^\\s*auto\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=\\s*\\[[^\\]]*\\]\\s*\\([^)]*\\)\\s*mutable"
+      ],
+      "global_variable": [
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*(?:=.*)?;",
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\{.*\\}\\s*;",
+        "^[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\[.*\\]\\s*(?:=.*)?;"
+      ],
+      "static_variable": [
+        "^static\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*(?:=.*)?;"
+      ],
+      "extern_variable": [
+        "^extern\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*;"
+      ],
+      "constexpr_variable": [
+        "^constexpr\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=.*;"
+      ],
+      "thread_local_variable": [
+        "^thread_local\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*(?:=.*)?;"
+      ],
+      "enum_def": [
+        "^enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "enum_class": [
+        "^enum\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^enum\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\{",
+        "^enum\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;",
+        "^enum\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*[A-Za-z_][A-Za-z0-9_]*\\s*;"
+      ],
+      "enum_struct": [
+        "^enum\\s+struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^enum\\s+struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*[A-Za-z_][A-Za-z0-9_]*\\s*\\{"
+      ],
+      "enum_forward_decl": [
+        "^enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;",
+        "^enum\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;"
+      ],
+      "template_class": [
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^template\\s*<[^>]+>\\s*struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "template_function": [
+        "^template\\s*<[^>]+>\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "template_specialization": [
+        "^template\\s*<>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*\\{",
+        "^template\\s*<>\\s*struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*\\{"
+      ],
+      "template_partial_specialization": [
+        "^template\\s*<[^>]+>\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*\\{",
+        "^template\\s*<[^>]+>\\s*struct\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*<[^>]+>\\s*\\{"
+      ],
+      "template_variable": [
+        "^template\\s*<[^>]+>\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=.*;"
+      ],
+      "template_alias": [
+        "^template\\s*<[^>]+>\\s*using\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=.*;"
+      ],
+      "typedef_def": [
+        "^typedef\\s+[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*;"
+      ],
+      "using_alias": [
+        "^using\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s*;",
+        "^using\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=\\s*[A-Za-z_][A-Za-z0-9_:<>,*&\\s]+\\s*;"
+      ],
+      "concept_def": [
+        "^template\\s*<[^>]+>\\s*concept\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=",
+        "^concept\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*="
+      ]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "_comment_header": "=== CAST Extension Generator - Bash/Shell ===",
+  "_description": "Simple shell scripting language with clear syntax for functions and calls",
+  
+  "language": "Bash",
+  "namespace": "uc",
+  "file_no": 120,
+  "version": "1.0.1",
+  "author": "CAST",
+  "extensions": ["sh", "bash"],
+  "tags": "Shell Scripting Linux Unix",
+  
+  "comment": "#",
+  "multiline_comment": null,
+  
+  "external_imports": true,
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": [
+        "function_keyword",
+        "function_no_keyword"
+      ]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "function_keyword": [
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(\\s*\\)\\s*\\{"
+      ],
+      "function_no_keyword": [
+        "^\\s*(?P<n>[a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(\\s*\\)\\s*\\{"
+      ]
+    },
+    
+    "import_patterns": [
+      "^\\s*(?:source|\\.\\s+)\\s+(?P<module>[\"']?[^\"'\\s]+[\"']?)",
+      "^\\s*\\s*\\.\\s+(?P<module>\\S+)"
+    ]
+  }
+}

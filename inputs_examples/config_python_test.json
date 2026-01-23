@@ -1,0 +1,200 @@
+{
+  "_comment_header": "=== CAST Extension Generator - PyFlask ===",
+  "_description": "Full Python support with Flask patterns, decorators, async/await, dataclasses, type hints, and modern Python 3.10+ features",
+  
+  "language": "PythonTest",
+  "namespace": "uc",
+  "file_no": 104,
+  "version": "1.1.3",
+  "author": "CAST",
+  "extensions": ["py", "pyw", "pyi", "pyx", "pxd"],
+  "tags": "Python Flask Web Backend API Scripting Data Science",
+  
+  "comment": "#",
+  "multiline_comment": {
+    "begin": "\"\"\"",
+    "end": "\"\"\""
+  },
+  
+  "external_imports": true,
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Class": {
+      "parent": "Program",
+      "pattern_keys": [
+        "class_declaration",
+        "class_inheritance",
+        "class_decorator",
+        "dataclass",
+        "class_abstract",
+        "class_protocol",
+        "class_typed_dict",
+        "class_named_tuple",
+        "class_enum"
+      ]
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": [
+        "function_def",
+        "async_function",
+        "function_typed",
+        "function_decorator",
+        "flask_route",
+        "flask_blueprint_route",
+        "fastapi_route",
+        "lambda_named",
+        "function_generator"
+      ]
+    },
+    "Method": {
+      "parent": "Class",
+      "pattern_keys": [
+        "method_def",
+        "method_classmethod",
+        "method_staticmethod",
+        "method_property",
+        "method_dunder",
+        "method_async",
+        "method_abstractmethod",
+        "method_private",
+        "method_typed"
+      ]
+    },
+    "Module": {
+      "parent": "Program",
+      "pattern_keys": ["module_import"]
+    },
+    "Variable": {
+      "parent": "Program",
+      "pattern_keys": [
+        "global_variable",
+        "typed_variable",
+        "constant"
+      ]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "indentation",
+    "patterns": {
+      "class_declaration": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:",
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\s*\\)\\s*:"
+      ],
+      "class_inheritance": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([A-Za-z_][A-Za-z0-9_.,\\s\\[\\]]*\\)\\s*:"
+      ],
+      "class_decorator": [
+        "^@[a-zA-Z_][A-Za-z0-9_.]*(?:\\([^)]*\\))?\\s*$[\\r\\n]+^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*[:(]"
+      ],
+      "dataclass": [
+        "^@dataclass(?:\\([^)]*\\))?\\s*$[\\r\\n]+^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*[:(]",
+        "^@dataclasses\\.dataclass(?:\\([^)]*\\))?\\s*$[\\r\\n]+^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*[:(]"
+      ],
+      "class_abstract": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\s*ABC\\s*[,)]",
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*ABC[^)]*\\)\\s*:"
+      ],
+      "class_protocol": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\s*Protocol\\s*[,)]",
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*Protocol[^)]*\\)\\s*:"
+      ],
+      "class_typed_dict": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\s*TypedDict\\s*[,)]"
+      ],
+      "class_named_tuple": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\s*NamedTuple\\s*\\)\\s*:"
+      ],
+      "class_enum": [
+        "^class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\(\\s*(?:Enum|IntEnum|Flag|IntFlag)\\s*\\)\\s*:"
+      ],
+      "function_def": [
+        "^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(",
+        "^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*:"
+      ],
+      "async_function": [
+        "^async\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(",
+        "^async\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*:"
+      ],
+      "function_typed": [
+        "^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*->\\s*[A-Za-z_][A-Za-z0-9_\\[\\],\\s|\"']*\\s*:",
+        "^async\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*->\\s*[A-Za-z_][A-Za-z0-9_\\[\\],\\s|\"']*\\s*:"
+      ],
+      "function_decorator": [
+        "^@[a-zA-Z_][A-Za-z0-9_.]*(?:\\([^)]*\\))?\\s*$[\\r\\n]+^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "flask_route": [
+        "^@app\\.route\\s*\\([^)]+\\)\\s*$[\\r\\n]+(?:@[^\\n]+$[\\r\\n]+)*^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(",
+        "^@app\\.(?:get|post|put|delete|patch)\\s*\\([^)]+\\)\\s*$[\\r\\n]+(?:@[^\\n]+$[\\r\\n]+)*^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "flask_blueprint_route": [
+        "^@[a-z_][A-Za-z0-9_]*\\.route\\s*\\([^)]+\\)\\s*$[\\r\\n]+(?:@[^\\n]+$[\\r\\n]+)*^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(",
+        "^@[a-z_][A-Za-z0-9_]*\\.(?:get|post|put|delete|patch)\\s*\\([^)]+\\)\\s*$[\\r\\n]+(?:@[^\\n]+$[\\r\\n]+)*^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "fastapi_route": [
+        "^@[a-z_][A-Za-z0-9_]*\\.(?:get|post|put|delete|patch|options|head|trace)\\s*\\([^)]+\\)\\s*$[\\r\\n]+(?:@[^\\n]+$[\\r\\n]+)*^(?:async\\s+)?def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "lambda_named": [
+        "^(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=\\s*lambda\\s+[^:]+:",
+        "^(?P<n>[a-z_][A-Za-z0-9_]*)\\s*:\\s*Callable.*=\\s*lambda"
+      ],
+      "function_generator": [
+        "^def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\([^)]*\\).*:(?:[^\\n]*\\n)*[^\\n]*\\byield\\b"
+      ],
+      "method_def": [
+        "^\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self\\s*[,)]"
+      ],
+      "method_classmethod": [
+        "^\\s+@classmethod\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*cls\\s*[,)]"
+      ],
+      "method_staticmethod": [
+        "^\\s+@staticmethod\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_property": [
+        "^\\s+@property\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self\\s*\\)\\s*:",
+        "^\\s+@[a-z_][A-Za-z0-9_]*\\.setter\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self\\s*,",
+        "^\\s+@[a-z_][A-Za-z0-9_]*\\.deleter\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self\\s*\\)"
+      ],
+      "method_dunder": [
+        "^\\s+def\\s+(?P<n>__[a-z_][A-Za-z0-9_]*__)\\s*\\(\\s*self\\s*[,)]"
+      ],
+      "method_async": [
+        "^\\s+async\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self\\s*[,)]"
+      ],
+      "method_abstractmethod": [
+        "^\\s+@abstractmethod\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s+@abc\\.abstractmethod\\s*$[\\r\\n]+\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_private": [
+        "^\\s+def\\s+(?P<n>_[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self\\s*[,)]"
+      ],
+      "method_typed": [
+        "^\\s+def\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*\\(\\s*self(?:[^)]*)?\\)\\s*->\\s*[A-Za-z_][A-Za-z0-9_\\[\\],\\s|\"']*\\s*:"
+      ],
+      "module_import": [
+        "^from\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_.]*)\\s+import",
+        "^import\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_.]*)(?:\\s*,|\\s*$|\\s+as)"
+      ],
+      "global_variable": [
+        "^(?P<n>[a-z_][A-Za-z0-9_]*)\\s*=\\s*[^=]",
+        "^(?P<n>[a-z_][A-Za-z0-9_]*)\\s*:\\s*[A-Z][A-Za-z0-9_\\[\\]]*\\s*="
+      ],
+      "typed_variable": [
+        "^(?P<n>[a-z_][A-Za-z0-9_]*)\\s*:\\s*[A-Z][A-Za-z0-9_\\[\\],\\s|\"']*(?:\\s*=)?"
+      ],
+      "constant": [
+        "^(?P<n>[A-Z_][A-Z0-9_]*)\\s*=\\s*[^=]",
+        "^(?P<n>[A-Z_][A-Z0-9_]*)\\s*:\\s*Final"
+      ]
+    }
+  }
+}

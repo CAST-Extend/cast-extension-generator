@@ -1,0 +1,218 @@
+{
+  "_comment_header": "=== CAST Extension Generator - Go ===",
+  "_description": "Comprehensive Go language support with packages, goroutines, channels, interfaces, and modern Go features",
+  
+  "language": "Go",
+  "namespace": "uc",
+  "file_no": 106,
+  "version": "1.0.6",
+  "author": "CAST",
+  "extensions": ["go"],
+  "tags": "Go Golang Concurrency Systems Programming Backend",
+  
+  "comment": "//",
+  "multiline_comment": {
+    "begin": "/*",
+    "end": "*/"
+  },
+  
+  "external_imports": true,
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Package": {
+      "parent": "Program",
+      "pattern_keys": ["package_def"]
+    },
+    "Struct": {
+      "parent": "Package",
+      "pattern_keys": [
+        "struct_def",
+        "struct_embedded",
+        "struct_empty"
+      ]
+    },
+    "Interface": {
+      "parent": "Package",
+      "pattern_keys": [
+        "interface_def",
+        "interface_embedded",
+        "interface_empty",
+        "interface_union"
+      ]
+    },
+    "Function": {
+      "parent": "Package",
+      "pattern_keys": [
+        "function_def",
+        "function_variadic",
+        "function_multiple_return",
+        "function_named_return",
+        "function_generic",
+        "function_init",
+        "function_main"
+      ]
+    },
+    "Method": {
+      "parent": "Struct",
+      "pattern_keys": [
+        "method_def",
+        "method_pointer_receiver",
+        "method_value_receiver",
+        "method_generic"
+      ]
+    },
+    "Variable": {
+      "parent": "Package",
+      "pattern_keys": [
+        "var_def",
+        "var_short",
+        "var_multiple",
+        "var_block"
+      ]
+    },
+    "Constant": {
+      "parent": "Package",
+      "pattern_keys": [
+        "const_def",
+        "const_typed",
+        "const_block",
+        "const_iota"
+      ]
+    },
+    "Type": {
+      "parent": "Package",
+      "pattern_keys": [
+        "type_alias",
+        "type_def",
+        "type_generic",
+        "type_func",
+        "type_chan",
+        "type_map"
+      ]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "package_def": [
+        "^package\\s+(?P<n>[a-z][a-z0-9_]*)"
+      ],
+      "struct_def": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+struct\\s*\\{",
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+struct\\s*$"
+      ],
+      "struct_embedded": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+struct\\s*\\{[^}]*[A-Z][A-Za-z0-9_]*\\s*\\n"
+      ],
+      "struct_empty": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+struct\\s*\\{\\s*\\}"
+      ],
+      "interface_def": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+interface\\s*\\{",
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+interface\\s*$"
+      ],
+      "interface_embedded": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+interface\\s*\\{[^}]*[A-Z][A-Za-z0-9_]*\\s*\\n"
+      ],
+      "interface_empty": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+interface\\s*\\{\\s*\\}"
+      ],
+      "interface_union": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+interface\\s*\\{[^}]*\\|[^}]*\\}"
+      ],
+      "function_def": [
+        "^func\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^func\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*[A-Za-z_\\[\\]\\*][^{]*\\{",
+        "^func\\s+(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^func\\s+(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*[A-Za-z_\\[\\]\\*][^{]*\\{"
+      ],
+      "function_variadic": [
+        "^func\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\([^)]*\\.\\.\\.\\s*[A-Za-z_\\[\\]][^)]*\\)"
+      ],
+      "function_multiple_return": [
+        "^func\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\([^)]+,[^)]+\\)",
+        "^func\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\([^)]+\\)[^{]*\\{"
+      ],
+      "function_named_return": [
+        "^func\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\([a-z_][A-Za-z0-9_]*\\s+[A-Za-z_]"
+      ],
+      "function_generic": [
+        "^func\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\[[^\\]]+\\]\\s*\\([^)]*\\)"
+      ],
+      "function_init": [
+        "^func\\s+(?P<n>init)\\s*\\(\\)\\s*\\{"
+      ],
+      "function_main": [
+        "^func\\s+(?P<n>main)\\s*\\(\\)\\s*\\{"
+      ],
+      "method_def": [
+        "^func\\s*\\([^)]+\\)\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^func\\s*\\([^)]+\\)\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*[A-Za-z_\\[\\]\\*][^{]*\\{",
+        "^func\\s*\\([^)]+\\)\\s+(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^func\\s*\\([^)]+\\)\\s+(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*[A-Za-z_\\[\\]\\*][^{]*\\{"
+      ],
+      "method_pointer_receiver": [
+        "^func\\s*\\(\\s*\\w+\\s*\\*[A-Z][A-Za-z0-9_]*\\s*\\)\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "method_value_receiver": [
+        "^func\\s*\\(\\s*\\w+\\s+[A-Z][A-Za-z0-9_]*\\s*\\)\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)"
+      ],
+      "method_generic": [
+        "^func\\s*\\([^)]+\\)\\s+(?P<n>[A-Za-z][A-Za-z0-9_]*)\\s*\\[[^\\]]+\\]\\s*\\([^)]*\\)"
+      ],
+      "var_def": [
+        "^var\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s+[A-Za-z_\\[\\]\\*]",
+        "^var\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*="
+      ],
+      "var_short": [
+        "^\\s*(?P<n>[a-z_][A-Za-z0-9_]*)\\s*:="
+      ],
+      "var_multiple": [
+        "^var\\s+(?P<n>[a-z_][A-Za-z0-9_]*)\\s*,\\s*[a-z_]"
+      ],
+      "var_block": [
+        "^var\\s*\\("
+      ],
+      "const_def": [
+        "^const\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=",
+        "^const\\s+(?P<n>[A-Z_][A-Z0-9_]*)\\s*="
+      ],
+      "const_typed": [
+        "^const\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+[A-Za-z_][A-Za-z0-9_]*\\s*="
+      ],
+      "const_block": [
+        "^const\\s*\\("
+      ],
+      "const_iota": [
+        "^\\s*(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=\\s*iota"
+      ],
+      "type_alias": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=\\s*[A-Za-z_\\[\\]]"
+      ],
+      "type_def": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+[A-Za-z_\\[\\]][A-Za-z0-9_\\[\\]\\*]*(?:\\s|$)"
+      ],
+      "type_generic": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\[[^\\]]+\\]"
+      ],
+      "type_func": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+func\\s*\\("
+      ],
+      "type_chan": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+(?:chan|<-chan|chan<-)\\s+"
+      ],
+      "type_map": [
+        "^type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+map\\s*\\["
+      ]
+    }
+  }
+}

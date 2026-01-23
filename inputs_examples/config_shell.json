@@ -1,0 +1,123 @@
+{
+  "_comment_header": "=== CAST Extension Generator - Shell/Bash ===",
+  "_description": "Full Bash/Shell support including functions, aliases, sourcing, variables, and common shell script patterns",
+  
+  "language": "Shell",
+  "namespace": "uc",
+  "file_no": 108,
+  "version": "1.0.6",
+  "author": "CAST",
+  "extensions": ["sh", "bash", "zsh", "ksh", "csh", "tcsh", "fish", "bats"],
+  "tags": "Shell Bash Scripting Unix Linux DevOps Automation",
+  
+  "comment": "#",
+  "multiline_comment": {
+    "begin": ": '",
+    "end": "'"
+  },
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": [
+        "function_keyword", 
+        "function_keyword_newline",
+        "function_posix", 
+        "function_posix_newline",
+        "function_bats"
+      ]
+    },
+    "Alias": {
+      "parent": "Program",
+      "pattern_keys": ["alias_definition"]
+    },
+    "Variable": {
+      "parent": "Program",
+      "pattern_keys": [
+        "variable_simple",
+        "variable_export", 
+        "variable_readonly", 
+        "variable_declare",
+        "variable_array",
+        "variable_local_function"
+      ]
+    },
+    "Source": {
+      "parent": "Program",
+      "pattern_keys": ["source_file", "dot_source"]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "function_keyword": [
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_-]*)\\s*\\(\\s*\\)\\s*\\{",
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_-]*)\\s*\\{"
+      ],
+      "function_keyword_newline": [
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_-]*)\\s*\\(\\s*\\)\\s*$",
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_-]*)\\s*$"
+      ],
+      "function_posix": [
+        "^(?P<n>[a-zA-Z_][A-Za-z0-9_-]*)\\s*\\(\\s*\\)\\s*\\{"
+      ],
+      "function_posix_newline": [
+        "^(?P<n>[a-zA-Z_][A-Za-z0-9_-]*)\\s*\\(\\s*\\)\\s*$"
+      ],
+      "function_bats": [
+        "^@test\\s+[\"'](?P<n>[^\"']+)[\"']\\s*\\{",
+        "^\\s*@test\\s+[\"'](?P<n>[^\"']+)[\"']\\s*\\{"
+      ],
+      "alias_definition": [
+        "^\\s*alias\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_.-]*)\\s*=",
+        "^\\s*alias\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_.-]*)=\"",
+        "^\\s*alias\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_.-]*)='"
+      ],
+      "variable_simple": [
+        "^\\s*(?P<n>[A-Z_][A-Z0-9_]*)\\s*=",
+        "^\\s*(?P<n>[a-z_][a-z0-9_]*)\\s*="
+      ],
+      "variable_export": [
+        "^\\s*export\\s+(?P<n>[A-Z_][A-Z0-9_]*)\\s*=",
+        "^\\s*export\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=",
+        "^\\s*export\\s+(?P<n>[A-Z_][A-Z0-9_]*)\\s*$"
+      ],
+      "variable_readonly": [
+        "^\\s*readonly\\s+(?P<n>[A-Z_][A-Z0-9_]*)\\s*=",
+        "^\\s*readonly\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=",
+        "^\\s*declare\\s+-r\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*="
+      ],
+      "variable_declare": [
+        "^\\s*declare\\s+(?:-[aAilnrtuxgf]+\\s+)?(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=",
+        "^\\s*typeset\\s+(?:-[aAilnrtuxgf]+\\s+)?(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*="
+      ],
+      "variable_array": [
+        "^\\s*(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*\\(",
+        "^\\s*declare\\s+-[aA]\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*\\("
+      ],
+      "variable_local_function": [
+        "^\\s+local\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=",
+        "^\\s+local\\s+-[aAilnrtux]+\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*="
+      ],
+      "source_file": [
+        "^\\s*source\\s+(?P<n>[^\\s#;|&\"']+)",
+        "^\\s*source\\s+\"(?P<n>[^\"]+)\"",
+        "^\\s*source\\s+'(?P<n>[^']+)'"
+      ],
+      "dot_source": [
+        "^\\s*\\.\\s+(?P<n>[^\\s#;|&\"']+)",
+        "^\\s*\\.\\s+\"(?P<n>[^\"]+)\"",
+        "^\\s*\\.\\s+'(?P<n>[^']+)'"
+      ]
+    }
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "_comment_header": "=== CAST Extension Generator - JavaScript/Node.js ===",
+  "_description": "Full JavaScript/Node.js support for modern web applications including ES6+, CommonJS, AMD, Express.js patterns",
+  
+  "language": "JavaScriptTest",
+  "namespace": "uc",
+  "file_no": 100,
+  "version": "1.0.0",
+  "author": "CAST",
+  "extensions": ["js", "mjs", "cjs", "jsx", "es6", "es"],
+  "tags": "JavaScript Node.js Express ES6 Web Frontend Backend",
+  
+  "comment": "//",
+  "multiline_comment": {
+    "begin": "/*",
+    "end": "*/"
+  },
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Class": {
+      "parent": "Program",
+      "pattern_keys": ["class_declaration", "class_expression", "class_extends"]
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": [
+        "function_declaration", 
+        "function_expression", 
+        "arrow_function_const", 
+        "arrow_function_let", 
+        "arrow_function_var",
+        "async_function", 
+        "generator_function", 
+        "iife", 
+        "module_exports_function",
+        "object_method_function",
+        "callback_function"
+      ]
+    },
+    "Method": {
+      "parent": "Class",
+      "pattern_keys": [
+        "class_method", 
+        "class_getter", 
+        "class_setter", 
+        "class_static_method", 
+        "class_async_method", 
+        "class_generator_method",
+        "class_private_method", 
+        "constructor_method"
+      ]
+    },
+    "Module": {
+      "parent": "Program",
+      "pattern_keys": ["commonjs_module", "es_module_default", "es_module_named"]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "class_declaration": [
+        "^\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s*\\{",
+        "^\\s*export\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s*\\{",
+        "^\\s*export\\s+default\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s*\\{",
+        "^\\s*export\\s+default\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s+extends"
+      ],
+      "class_expression": [
+        "^\\s*(?:const|let|var)\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s*=\\s*class\\s*\\{",
+        "^\\s*(?:const|let|var)\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s*=\\s*class\\s+[A-Z][A-Za-z0-9_$]*\\s*\\{"
+      ],
+      "class_extends": [
+        "^\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s+extends\\s+[A-Za-z_$][A-Za-z0-9_$.]*\\s*\\{",
+        "^\\s*export\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s+extends\\s+[A-Za-z_$][A-Za-z0-9_$.]*\\s*\\{",
+        "^\\s*export\\s+default\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_$]*)\\s+extends\\s+[A-Za-z_$][A-Za-z0-9_$.]*\\s*\\{"
+      ],
+      "function_declaration": [
+        "^\\s*function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*export\\s+function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*export\\s+default\\s+function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\("
+      ],
+      "function_expression": [
+        "^\\s*(?:const|let|var)\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*function\\s*\\(",
+        "^\\s*(?:const|let|var)\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*function\\s+[a-zA-Z_$][A-Za-z0-9_$]*\\s*\\("
+      ],
+      "arrow_function_const": [
+        "^\\s*const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*[a-zA-Z_$][A-Za-z0-9_$]*\\s*=>",
+        "^\\s*export\\s+const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*export\\s+const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*[a-zA-Z_$][A-Za-z0-9_$]*\\s*=>",
+        "^\\s*export\\s+const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*export\\s+const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s+[a-zA-Z_$][A-Za-z0-9_$]*\\s*=>"
+      ],
+      "arrow_function_let": [
+        "^\\s*let\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*let\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*[a-zA-Z_$][A-Za-z0-9_$]*\\s*=>"
+      ],
+      "arrow_function_var": [
+        "^\\s*var\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*var\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*[a-zA-Z_$][A-Za-z0-9_$]*\\s*=>"
+      ],
+      "async_function": [
+        "^\\s*async\\s+function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*export\\s+async\\s+function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*export\\s+default\\s+async\\s+function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s+[a-zA-Z_$][A-Za-z0-9_$]*\\s*=>",
+        "^\\s*const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s+function\\s*\\(",
+        "^\\s*let\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*let\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s+function\\s*\\("
+      ],
+      "generator_function": [
+        "^\\s*function\\s*\\*\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*export\\s+function\\s*\\*\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*const\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*function\\s*\\*\\s*\\("
+      ],
+      "iife": [
+        "^\\s*\\(\\s*function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*\\(\\s*function\\s*\\([^)]*\\)\\s*\\{[^}]*\\}\\s*\\)\\s*\\(\\s*\\)"
+      ],
+      "module_exports_function": [
+        "^\\s*module\\.exports\\s*=\\s*function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(",
+        "^\\s*module\\.exports\\s*=\\s*function\\s*\\(",
+        "^\\s*module\\.exports\\.(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*function\\s*\\(",
+        "^\\s*module\\.exports\\.(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*exports\\.(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*function\\s*\\(",
+        "^\\s*exports\\.(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*exports\\.(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*=\\s*async\\s*\\([^)]*\\)\\s*=>"
+      ],
+      "object_method_function": [
+        "^\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*:\\s*function\\s*\\(",
+        "^\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*:\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*:\\s*async\\s*\\([^)]*\\)\\s*=>",
+        "^\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*:\\s*async\\s+function\\s*\\("
+      ],
+      "callback_function": [
+        "^\\s*\\.(?:then|catch|finally|map|filter|reduce|forEach|some|every)\\s*\\(\\s*function\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\("
+      ],
+      "class_method": [
+        "^\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "class_getter": [
+        "^\\s*get\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\(\\s*\\)\\s*\\{"
+      ],
+      "class_setter": [
+        "^\\s*set\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "class_static_method": [
+        "^\\s*static\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*static\\s+async\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*static\\s+\\*\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "class_async_method": [
+        "^\\s*async\\s+(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "class_generator_method": [
+        "^\\s*\\*\\s*(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "class_private_method": [
+        "^\\s*#(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*async\\s+#(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*static\\s+#(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "constructor_method": [
+        "^\\s*(?P<n>constructor)\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "commonjs_module": [
+        "^\\s*module\\.exports\\s*=\\s*\\{",
+        "^\\s*module\\.exports\\s*=\\s*(?P<n>[A-Z][A-Za-z0-9_$]*)",
+        "^\\s*exports\\.(?P<n>[a-zA-Z_$][A-Za-z0-9_$]*)\\s*="
+      ],
+      "es_module_default": [
+        "^\\s*export\\s+default\\s+(?P<n>[A-Za-z_$][A-Za-z0-9_$]*)",
+        "^\\s*export\\s+default\\s+\\{[^}]*\\}"
+      ],
+      "es_module_named": [
+        "^\\s*export\\s+\\{[^}]*\\b(?P<n>[A-Za-z_$][A-Za-z0-9_$]*)\\b",
+        "^\\s*export\\s+(?:const|let|var|function|class)\\s+(?P<n>[A-Za-z_$][A-Za-z0-9_$]*)"
+      ]
+    }
+  }
+}

@@ -1,0 +1,378 @@
+{
+  "_comment_header": "=== CAST Extension Generator - GraphQL ===",
+  "_description": "Comprehensive GraphQL schema and query language support with extensive pattern coverage for types, interfaces, directives, fragments, and operations",
+  
+  "language": "GraphQL",
+  "namespace": "uc",
+  "file_no": 150,
+  "version": "1.0.5",
+  "author": "CAST",
+  "extensions": ["graphql", "gql", "graphqls"],
+  "tags": "GraphQL API Schema Query Mutation Subscription",
+  
+  "comment": "#",
+  "multiline_comment": {
+    "begin": "\"\"\"",
+    "end": "\"\"\""
+  },
+  
+  "external_imports": false,
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Schema": {
+      "parent": "file",
+      "pattern_keys": ["schema_def"]
+    },
+    "Type": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "type_def",
+        "type_def_implements",
+        "type_def_implements_multiple",
+        "type_extend",
+        "type_extend_implements",
+        "type_def_description"
+      ]
+    },
+    "Interface": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "interface_def",
+        "interface_def_implements",
+        "interface_extend",
+        "interface_def_description"
+      ]
+    },
+    "Enum": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "enum_def",
+        "enum_extend",
+        "enum_def_description"
+      ]
+    },
+    "EnumValue": {
+      "parent": "Enum",
+      "pattern_keys": [
+        "enum_value",
+        "enum_value_deprecated",
+        "enum_value_directive",
+        "enum_value_description"
+      ]
+    },
+    "Input": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "input_def",
+        "input_extend",
+        "input_def_description"
+      ]
+    },
+    "Union": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "union_def",
+        "union_extend",
+        "union_def_description"
+      ]
+    },
+    "Scalar": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "scalar_def",
+        "scalar_directive",
+        "scalar_def_description"
+      ]
+    },
+    "Directive": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "directive_def",
+        "directive_def_with_args",
+        "directive_def_repeatable"
+      ]
+    },
+    "Field": {
+      "parent": "Type",
+      "pattern_keys": [
+        "field_def",
+        "field_def_with_args",
+        "field_def_non_null",
+        "field_def_list",
+        "field_def_list_non_null",
+        "field_def_deprecated",
+        "field_def_directive",
+        "field_def_description"
+      ]
+    },
+    "Argument": {
+      "parent": "Field",
+      "pattern_keys": [
+        "argument_def",
+        "argument_def_default",
+        "argument_def_non_null",
+        "argument_def_list"
+      ]
+    },
+    "Query": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "query_operation",
+        "query_operation_named",
+        "query_operation_with_vars",
+        "query_operation_anonymous"
+      ]
+    },
+    "Mutation": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "mutation_operation",
+        "mutation_operation_named",
+        "mutation_operation_with_vars"
+      ]
+    },
+    "Subscription": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "subscription_operation",
+        "subscription_operation_named",
+        "subscription_operation_with_vars"
+      ]
+    },
+    "Fragment": {
+      "parent": "Schema",
+      "pattern_keys": [
+        "fragment_def",
+        "fragment_def_directive",
+        "inline_fragment"
+      ]
+    },
+    "Variable": {
+      "parent": "Query",
+      "pattern_keys": [
+        "variable_def",
+        "variable_def_default",
+        "variable_def_non_null"
+      ]
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "schema_def": [
+        "^\\s*schema\\s*\\{",
+        "^\\s*schema\\s*@[^{]*\\{"
+      ],
+      "type_def": [
+        "^\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@[^{]*\\{",
+        "^\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "type_def_implements": [
+        "^\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Z][A-Za-z0-9_]*\\s*\\{"
+      ],
+      "type_def_implements_multiple": [
+        "^\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Z][A-Za-z0-9_&\\s]*\\s*\\{"
+      ],
+      "type_extend": [
+        "^\\s*extend\\s+type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*extend\\s+type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@[^{]*\\{",
+        "^\\s*extend\\s+type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "type_extend_implements": [
+        "^\\s*extend\\s+type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Z][A-Za-z0-9_&\\s]*\\s*\\{"
+      ],
+      "type_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*\"[^\"]*\"\\s*type\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "interface_def": [
+        "^\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@[^{]*\\{",
+        "^\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "interface_def_implements": [
+        "^\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Z][A-Za-z0-9_&\\s]*\\s*\\{"
+      ],
+      "interface_extend": [
+        "^\\s*extend\\s+interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*extend\\s+interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "interface_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*\"[^\"]*\"\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "enum_def": [
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@[^{]*\\{",
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "enum_extend": [
+        "^\\s*extend\\s+enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*extend\\s+enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "enum_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*\"[^\"]*\"\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "enum_value": [
+        "^\\s*(?P<n>[A-Z][A-Z0-9_]*)\\s*$",
+        "^\\s*(?P<n>[A-Z][A-Z0-9_]*)\\s*(?:#|$)"
+      ],
+      "enum_value_deprecated": [
+        "^\\s*(?P<n>[A-Z][A-Z0-9_]*)\\s*@deprecated"
+      ],
+      "enum_value_directive": [
+        "^\\s*(?P<n>[A-Z][A-Z0-9_]*)\\s*@[a-zA-Z]"
+      ],
+      "enum_value_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*(?P<n>[A-Z][A-Z0-9_]*)",
+        "^\\s*\"[^\"]*\"\\s*(?P<n>[A-Z][A-Z0-9_]*)"
+      ],
+      "input_def": [
+        "^\\s*input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@[^{]*\\{",
+        "^\\s*input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "input_extend": [
+        "^\\s*extend\\s+input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*extend\\s+input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "input_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*\"[^\"]*\"\\s*input\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "union_def": [
+        "^\\s*union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=",
+        "^\\s*union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@[^=]*=",
+        "^\\s*union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "union_extend": [
+        "^\\s*extend\\s+union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=",
+        "^\\s*extend\\s+union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "union_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*=",
+        "^\\s*\"[^\"]*\"\\s*union\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*="
+      ],
+      "scalar_def": [
+        "^\\s*scalar\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$",
+        "^\\s*scalar\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*(?:#|$)"
+      ],
+      "scalar_directive": [
+        "^\\s*scalar\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*@"
+      ],
+      "scalar_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*scalar\\s+(?P<n>[A-Z][A-Za-z0-9_]*)",
+        "^\\s*\"[^\"]*\"\\s*scalar\\s+(?P<n>[A-Z][A-Za-z0-9_]*)"
+      ],
+      "directive_def": [
+        "^\\s*directive\\s+@(?P<n>[a-z][A-Za-z0-9_]*)\\s+on\\s+"
+      ],
+      "directive_def_with_args": [
+        "^\\s*directive\\s+@(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "directive_def_repeatable": [
+        "^\\s*directive\\s+@(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*repeatable\\s+on"
+      ],
+      "field_def": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[]",
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z][A-Za-z0-9_]*\\s*(?:#|$)"
+      ],
+      "field_def_with_args": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*\\([^)]+\\)\\s*:\\s*"
+      ],
+      "field_def_non_null": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*(?:\\([^)]*\\))?\\s*:\\s*[A-Z\\[][^!]*!"
+      ],
+      "field_def_list": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*(?:\\([^)]*\\))?\\s*:\\s*\\[[A-Z][A-Za-z0-9_!]*\\]"
+      ],
+      "field_def_list_non_null": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*(?:\\([^)]*\\))?\\s*:\\s*\\[[A-Z][A-Za-z0-9_!]*\\]!"
+      ],
+      "field_def_deprecated": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*[:(][^@]*@deprecated"
+      ],
+      "field_def_directive": [
+        "^\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*[:(][^@]*@[a-z]"
+      ],
+      "field_def_description": [
+        "^\\s*\"\"\"[^\"]*\"\"\"\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:",
+        "^\\s*\"[^\"]*\"\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:"
+      ],
+      "argument_def": [
+        "\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[][A-Za-z0-9_\\[\\]!]*"
+      ],
+      "argument_def_default": [
+        "\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[][A-Za-z0-9_\\[\\]!]*\\s*="
+      ],
+      "argument_def_non_null": [
+        "\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[][A-Za-z0-9_\\[\\]]*!"
+      ],
+      "argument_def_list": [
+        "\\s*(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*\\[[A-Z][A-Za-z0-9_!]*\\]"
+      ],
+      "query_operation": [
+        "^\\s*(?P<n>query)\\s*\\{"
+      ],
+      "query_operation_named": [
+        "^\\s*query\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*query\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "query_operation_with_vars": [
+        "^\\s*query\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*query\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "query_operation_anonymous": [
+        "^\\s*\\{\\s*[a-z][A-Za-z0-9_]*"
+      ],
+      "mutation_operation": [
+        "^\\s*(?P<n>mutation)\\s*\\{"
+      ],
+      "mutation_operation_named": [
+        "^\\s*mutation\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*mutation\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "mutation_operation_with_vars": [
+        "^\\s*mutation\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*mutation\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "subscription_operation": [
+        "^\\s*(?P<n>subscription)\\s*\\{"
+      ],
+      "subscription_operation_named": [
+        "^\\s*subscription\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*subscription\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*$"
+      ],
+      "subscription_operation_with_vars": [
+        "^\\s*subscription\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\([^)]*\\)\\s*\\{",
+        "^\\s*subscription\\s*\\([^)]*\\)\\s*\\{"
+      ],
+      "fragment_def": [
+        "^\\s*fragment\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+on\\s+[A-Z][A-Za-z0-9_]*\\s*\\{",
+        "^\\s*fragment\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+on\\s+[A-Z][A-Za-z0-9_]*\\s*$"
+      ],
+      "fragment_def_directive": [
+        "^\\s*fragment\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+on\\s+[A-Z][A-Za-z0-9_]*\\s*@[a-z][^{]*\\{"
+      ],
+      "inline_fragment": [
+        "^\\s*\\.\\.\\.\\s*on\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "variable_def": [
+        "\\$(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[][A-Za-z0-9_\\[\\]!]*"
+      ],
+      "variable_def_default": [
+        "\\$(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[][A-Za-z0-9_\\[\\]!]*\\s*="
+      ],
+      "variable_def_non_null": [
+        "\\$(?P<n>[a-z][A-Za-z0-9_]*)\\s*:\\s*[A-Z\\[][A-Za-z0-9_\\[\\]]*!"
+      ]
+    }
+  }
+}

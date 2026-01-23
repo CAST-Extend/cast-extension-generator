@@ -5,15 +5,20 @@
 This module encapsulates all parsing logic for a single {{LANGUAGE}} source file.
 It follows a modular, extensible architecture:
 
-  - Light parsing: Quick extraction of global structures (classes, functions, etc.)
-  - Full parsing: Deep AST traversal for detailed analysis
-  - Reference resolution: Link creation between objects
-  - Extensible: Add custom parsers via the parser registry
+  - Light parsing (Pass 1): Automatic extraction of global structures
+  - Full parsing (Pass 2): MANUAL IMPLEMENTATION REQUIRED for link detection
 
-The design allows users to extend parsing capabilities by:
-1. Subclassing {{MODULE_CLASS}} and overriding parsing methods
-2. Registering custom AST node handlers
-3. Adding new object extractors
+IMPORTANT:
+----------
+Pass 1 (object detection) is fully implemented and automatic.
+Pass 2 (link detection) requires YOU to implement technology-specific logic.
+
+The following methods are SKELETONS that you must implement:
+  - full_parse(): Detect function/method calls
+  - resolve(): Resolve call targets to objects
+  - save_links(): Create links using the CAST SDK
+
+See each method's docstring for detailed implementation guidance.
 
 Python 3.4+ compatible.
 """
@@ -115,24 +120,35 @@ class {{LANGUAGE}}Library:
     """
     Container for all {{LANGUAGE}} modules in the analysis.
     
-    Provides:
-    - Storage for Module instances
-    - Global symbol table for cross-file resolution
-    - Lookup methods for reference resolution
+    This class stores all parsed modules and maintains a global symbol table
+    that can be used for cross-file resolution.
+    
+    IMPORTANT: The resolve_symbol() method is an OPTIONAL HELPER UTILITY.
+    It attempts generic resolution which may or may not work for your
+    specific language.
+    
+    When implementing link detection in the Module class, you can:
+    1. Use this helper method as a starting point
+    2. Ignore it and implement your own resolution logic
+    3. Extend it with technology-specific knowledge
     
     Attributes:
         modules (list): List of {{MODULE_CLASS}} instances
         symbols (dict): Global symbol table {fullname: object}
+        symbols_by_name (dict): Maps short names to list of fullnames
+        module_by_path (dict): Maps file paths to modules
     """
     
     def __init__(self):
         self.modules = []
         self.symbols = {}  # {fullname: CustomObject}
         self.symbols_by_name = defaultdict(list)  # {short_name: [fullnames]}
+        self.module_by_path = {}  # {path: module} for import resolution
     
     def add_module(self, module):
         """Add a module to the library and register its objects."""
         self.modules.append(module)
+        self.module_by_path[module.path] = module
         # Register all objects from this module in the global symbol table
         for fullname, obj in module.objects.items():
             short_name = None
@@ -157,24 +173,29 @@ class {{LANGUAGE}}Library:
         if short_name:
             self.symbols_by_name[short_name].append(fullname)
     
-    def resolve_symbol(self, name, context_module=None):
+    def resolve_symbol(self, name, context_module=None, restrict_to_file=False, restrict_to_class=None):
         """
-        Resolve a symbol name to its object.
+        [OPTIONAL HELPER] Resolve a symbol name to its object.
         
-        Resolution priority:
-        1. Exact fullname match
-        2. Same-file match (if context_module provided)
-        3. Match by short name (last part of fullname)
-        4. Match by suffix (name appears at end of fullname)
+        This is a GENERIC resolution algorithm with strict rules to avoid
+        false positives. It may work for some languages but will likely need
+        customization for your specific technology.
+        
+        Resolution strategy:
+        1. Exact fullname match (qualified calls like "ClassName.method")
+        2. Same-file match (prefer local definitions)
+        3. Cross-file match ONLY if there's exactly ONE candidate (no ambiguity)
         
         Args:
             name (str): Symbol name to resolve
             context_module: Module providing context for resolution
+            restrict_to_file (bool): Only search in same file (for self/this calls)
+            restrict_to_class (str): Only search in specific class fullname prefix
             
         Returns:
             tuple: (CustomObject, fullname) or (None, None)
         """
-        # Try exact match first
+        # Try exact match first (handles qualified calls)
         if name in self.symbols:
             return self.symbols[name], name
         
@@ -182,16 +203,38 @@ class {{LANGUAGE}}Library:
         if name in self.symbols_by_name:
             candidates = self.symbols_by_name[name]
             
+            # If restricted to a specific class, filter candidates
+            if restrict_to_class:
+                class_candidates = [fn for fn in candidates if fn.startswith(restrict_to_class + '.')]
+                if len(class_candidates) == 1:
+                    return self.symbols[class_candidates[0]], class_candidates[0]
+                return None, None  # Multiple or no matches in class
+            
+            # If restricted to same file, filter candidates
+            if restrict_to_file and context_module:
+                file_prefix = context_module.path + '.'
+                file_candidates = [fn for fn in candidates if fn.startswith(file_prefix)]
+                if len(file_candidates) == 1:
+                    return self.symbols[file_candidates[0]], file_candidates[0]
+                return None, None  # Multiple or no matches in file
+            
             # Prefer same-file match
             if context_module:
-                module_prefix = context_module.get_base_name() + '.'
-                for fullname in candidates:
-                    if fullname.startswith(module_prefix):
-                        return self.symbols[fullname], fullname
+                file_prefix = context_module.path + '.'
+                file_candidates = [fn for fn in candidates if fn.startswith(file_prefix)]
+                if len(file_candidates) == 1:
+                    return self.symbols[file_candidates[0]], file_candidates[0]
+                elif len(file_candidates) > 1:
+                    # Multiple matches in same file - ambiguous, don't guess
+                    return None, None
             
-            # Return first match if any
-            if candidates:
+            # Cross-file resolution: ONLY if exactly ONE candidate exists
+            # This prevents false positives when multiple files define same function
+            if len(candidates) == 1:
                 return self.symbols[candidates[0]], candidates[0]
+            else:
+                # Multiple candidates across files - too ambiguous, don't create link
+                return None, None
         
         # Try suffix matching: look for fullnames ending with .name or :name
         # This handles cases like resolving "new" to "UserService.new"
@@ -206,12 +249,16 @@ class {{LANGUAGE}}Library:
         if candidates:
             # Prefer same-file match
             if context_module:
-                module_prefix = context_module.get_filename() + '.'
-                for fullname in candidates:
-                    if fullname.startswith(module_prefix):
-                        return self.symbols[fullname], fullname
-            # Return first match
-            return self.symbols[candidates[0]], candidates[0]
+                file_prefix = context_module.path + '.'
+                file_candidates = [fn for fn in candidates if fn.startswith(file_prefix)]
+                if len(file_candidates) == 1:
+                    return self.symbols[file_candidates[0]], file_candidates[0]
+                elif len(file_candidates) > 1:
+                    return None, None  # Ambiguous
+            
+            # Only return if exactly one candidate
+            if len(candidates) == 1:
+                return self.symbols[candidates[0]], candidates[0]
         
         return None, None
 
@@ -278,13 +325,9 @@ class {{MODULE_CLASS}}:
     
     Implements the 2-pass parsing architecture:
     - light_parse(): Extract global structures (classes, functions)
-    - full_parse(): Deep analysis for references and calls
-    - resolve(): Create links between objects
-    
-    This class is designed to be extensible:
-    - Override _extract_* methods for custom extraction logic
-    - Use the parser registry for pluggable handlers
-    - Subclass for language-specific behavior
+    - full_parse(): Deep analysis for references and calls (SKELETON - implement manually)
+    - resolve(): Resolve call targets (SKELETON - implement manually)
+    - save_links(): Create links using CAST SDK (SKELETON - implement manually)
     
     Attributes:
         path (str): Full path to the source file
@@ -292,6 +335,7 @@ class {{MODULE_CLASS}}:
         ast (ASTNode): Parsed AST (available after light_parse)
         objects (dict): Created CAST objects {fullname: CustomObject}
         pending_links (list): Links to create during resolution
+        imported_symbols (dict): Tracked imports {name: fullname}
     """
     
     def __init__(self, path, file=None):
@@ -306,6 +350,7 @@ class {{MODULE_CLASS}}:
         self.file = file
         self.ast = None
         self.source_content = None
+        self.cleaned_source = None  # Source with strings/comments removed
         
         # Object storage
         self.objects = {}  # {fullname: CustomObject}
@@ -314,6 +359,13 @@ class {{MODULE_CLASS}}:
         
         # Links to create during resolution
         self.pending_links = []  # [(caller_fullname, callee_name, link_type, line)]
+        
+        # Unresolved calls for reporting
+        self.unresolved_calls = []  # [{file, line, code, callee, reason}]
+        
+        # Import tracking (may be useful for link resolution)
+        self.imported_symbols = {}  # {imported_name: source_module_hint}
+        self.import_statements = []  # Raw import statements for analysis
         
         # Program-level object (container for file)
         self.program = None
@@ -329,6 +381,213 @@ class {{MODULE_CLASS}}:
     def get_filename(self):
         """Get the filename with extension."""
         return os.path.basename(self.path)
+    
+    # =========================================================================
+    # SOURCE CLEANING - Remove strings and comments before parsing
+    # =========================================================================
+    
+    def _clean_source_for_parsing(self, content):
+        """
+        Remove strings and comments from source to avoid false positives.
+        
+        This prevents detecting calls inside:
+        - String literals: "call helper() here"
+        - Comments: # call helper() 
+        - Multi-line strings/comments
+        
+        Preserves line structure (replaces with spaces of same length).
+        
+        Args:
+            content (str): Raw source content
+            
+        Returns:
+            str: Cleaned source with strings/comments replaced by spaces
+        """
+        if not content:
+            return content
+        
+        result = []
+        lines = content.splitlines(keepends=True)
+        
+        in_multiline_string = False
+        in_multiline_comment = False
+        multiline_delim = None
+        
+        # Get comment syntax from config
+        single_comment = '{{COMMENT}}'
+        
+        for line in lines:
+            cleaned_line = []
+            i = 0
+            line_len = len(line)
+            
+            while i < line_len:
+                # Check if we're ending a multiline construct
+                if in_multiline_string:
+                    if line[i:i+len(multiline_delim)] == multiline_delim:
+                        # End of multiline string
+                        cleaned_line.append(' ' * len(multiline_delim))
+                        i += len(multiline_delim)
+                        in_multiline_string = False
+                        multiline_delim = None
+                    else:
+                        cleaned_line.append(' ')
+                        i += 1
+                    continue
+                
+                if in_multiline_comment:
+                    if line[i:i+2] == '*/':
+                        cleaned_line.append('  ')
+                        i += 2
+                        in_multiline_comment = False
+                    else:
+                        cleaned_line.append(' ')
+                        i += 1
+                    continue
+                
+                char = line[i]
+                
+                # Check for single-line comment
+                if single_comment and line[i:i+len(single_comment)] == single_comment:
+                    # Replace rest of line with spaces
+                    remaining = line_len - i
+                    cleaned_line.append(' ' * remaining)
+                    break
+                
+                # Check for multi-line comment start /*
+                if line[i:i+2] == '/*':
+                    in_multiline_comment = True
+                    cleaned_line.append('  ')
+                    i += 2
+                    continue
+                
+                # Check for triple-quoted strings (Python, GraphQL)
+                if line[i:i+3] in ('"""', "'''"):
+                    delim = line[i:i+3]
+                    # Look for end on same line
+                    end_pos = line.find(delim, i+3)
+                    if end_pos != -1:
+                        # Single-line triple-quoted string
+                        length = end_pos - i + 3
+                        cleaned_line.append(' ' * length)
+                        i = end_pos + 3
+                    else:
+                        # Start of multiline string
+                        in_multiline_string = True
+                        multiline_delim = delim
+                        cleaned_line.append('   ')
+                        i += 3
+                    continue
+                
+                # Check for regular strings
+                if char in ('"', "'"):
+                    quote = char
+                    j = i + 1
+                    while j < line_len:
+                        if line[j] == '\\' and j + 1 < line_len:
+                            j += 2  # Skip escaped char
+                        elif line[j] == quote:
+                            j += 1
+                            break
+                        else:
+                            j += 1
+                    # Replace string content with spaces
+                    length = j - i
+                    cleaned_line.append(' ' * length)
+                    i = j
+                    continue
+                
+                # Regular character - keep it
+                cleaned_line.append(char)
+                i += 1
+            
+            result.append(''.join(cleaned_line))
+        
+        return ''.join(result)
+    
+    # =========================================================================
+    # IMPORT TRACKING - Detect and track import statements
+    # =========================================================================
+    
+    def _extract_imports(self):
+        """
+        Extract import statements from the source.
+        
+        Detects common import patterns across languages:
+        - Python: import X, from X import Y
+        - JavaScript/TypeScript: import X from 'Y', require('Y')
+        - Go: import "path"
+        - etc.
+        
+        Populates self.imported_symbols with {name: source_hint}
+        """
+        if not self.source_content:
+            return
+        
+        # Generic import patterns (covers most languages)
+        import_patterns = [
+            # Python: from module import name
+            r'^\s*from\s+([a-zA-Z_][\w.]*)\s+import\s+([a-zA-Z_][\w,\s*]*)',
+            # Python: import module
+            r'^\s*import\s+([a-zA-Z_][\w.]*)',
+            # JavaScript/TypeScript: import { name } from 'module'
+            r'^\s*import\s+\{([^}]+)\}\s+from\s+[\'"]([^"\']+)[\'"]',
+            # JavaScript/TypeScript: import name from 'module'
+            r'^\s*import\s+([a-zA-Z_][\w]*)\s+from\s+[\'"]([^"\']+)[\'"]',
+            # JavaScript: require('module')
+            r'\brequire\s*\(\s*[\'"]([^"\']+)[\'"]\s*\)',
+            # Go: import "path"
+            r'^\s*import\s+[\'"]([^"\']+)[\'"]',
+            # Go: import ( "path" )
+            r'^\s*[\'"]([^"\']+)[\'"]',  # Inside import block
+        ]
+        
+        lines = self.source_content.splitlines()
+        in_import_block = False
+        
+        for line in lines:
+            stripped = line.strip()
+            
+            # Track Go-style import blocks
+            if stripped.startswith('import ('):
+                in_import_block = True
+                continue
+            if in_import_block and stripped == ')':
+                in_import_block = False
+                continue
+            
+            for pattern in import_patterns:
+                match = re.search(pattern, line)
+                if match:
+                    groups = match.groups()
+                    if len(groups) >= 2:
+                        # Pattern captured both name and source
+                        names = groups[0]
+                        source = groups[1]
+                        # Handle multiple names (e.g., "name1, name2")
+                        for name in re.split(r'[,\s]+', names):
+                            name = name.strip().strip('*')
+                            if name and name != 'as':
+                                self.imported_symbols[name] = source
+                                self.import_statements.append({
+                                    'name': name,
+                                    'source': source,
+                                    'line': line
+                                })
+                    elif len(groups) == 1:
+                        # Pattern captured just module name
+                        module = groups[0]
+                        # Extract short name (last component)
+                        short_name = module.split('.')[-1].split('/')[-1]
+                        self.imported_symbols[short_name] = module
+                        self.import_statements.append({
+                            'name': short_name,
+                            'source': module,
+                            'line': line
+                        })
+                    break
+        
+        log.debug('[{{LANGUAGE}}] Extracted ' + str(len(self.imported_symbols)) + ' imports from ' + self.path)
     
     # =========================================================================
     # PHASE 1: LIGHT PARSING
@@ -506,6 +765,10 @@ class {{MODULE_CLASS}}:
                 depth_at_match = depth - open_count  # Depth before the open brace
                 should_track = open_count > 0
                 
+                # Flag for single-line blocks (e.g., "int func() { return 0; }")
+                # This will be used to close the block immediately after adding it
+                single_line_block = (open_count > 0 and close_count > 0 and open_count == close_count)
+                
             elif block_style == 'end_keyword':
                 # Count opening keywords (class, module, def, do, if, etc.)
                 # and closing keywords (end)
@@ -534,6 +797,7 @@ class {{MODULE_CLASS}}:
                 depth = new_depth
                 depth_at_match = depth - open_keywords
                 should_track = open_keywords > 0
+                single_line_block = False  # Not applicable for end_keyword style
                 
             elif block_style == 'indentation':
                 # Calculate indentation level
@@ -552,6 +816,7 @@ class {{MODULE_CLASS}}:
                 
                 depth_at_match = depth
                 should_track = True  # Always track in indentation mode
+                single_line_block = False  # Not applicable for indentation style
                 
             elif block_style == 'sequential':
                 # Sequential mode: blocks end when the next block at same level starts
@@ -559,12 +824,14 @@ class {{MODULE_CLASS}}:
                 # We'll check for matches first, then close previous blocks
                 depth_at_match = 0
                 should_track = True  # Always track in sequential mode
+                single_line_block = False  # Not applicable for sequential style
                 # Note: block closing happens AFTER pattern matching below
             
             else:
                 # Default to braces behavior
                 depth_at_match = 0
                 should_track = True
+                single_line_block = False
             
             # Now check for pattern matches
             matched_on_line = False
@@ -574,7 +841,18 @@ class {{MODULE_CLASS}}:
                 for pattern in pattern_list:
                     match = pattern.match(line)
                     if match:
-                        name = match.group('name') if 'name' in match.groupdict() else match.group(1)
+                        # Support both (?P<name>...) and (?P<n>...) named groups
+                        groups = match.groupdict()
+                        if 'name' in groups:
+                            name = match.group('name')
+                        elif 'n' in groups:
+                            name = match.group('n')
+                        else:
+                            name = match.group(1) if match.groups() else None
+                        
+                        if not name:
+                            continue
+                        
                         node = ASTNode(pattern_key, name, start_line=i)
                         
                         # Check for receiver/parent group in pattern
@@ -629,6 +907,11 @@ class {{MODULE_CLASS}}:
                                 container_stack.append((node, pattern_key))
                             else:
                                 container_stack.append((node, depth_at_match))
+                            
+                            # Close immediately if this is a single-line block
+                            if block_style == 'braces' and 'single_line_block' in locals() and single_line_block:
+                                node.end_line = i
+                                container_stack.pop()
                         
                         matched_on_line = True
                         break
@@ -709,10 +992,12 @@ class {{MODULE_CLASS}}:
             # For Go-style methods: use receiver as prefix
             effective_prefix = node.properties['receiver'] + '.'
         
+        # Use FULL PATH instead of just filename to ensure unique fullnames
+        # This prevents collisions when multiple files have the same name in different folders
         if effective_prefix:
-            fullname = self.get_filename() + '.' + effective_prefix + node.name
+            fullname = self.path + '.' + effective_prefix + node.name
         else:
-            fullname = self.get_filename() + '.' + node.name
+            fullname = self.path + '.' + node.name
         
         # DUPLICATE PREVENTION: Skip if fullname already exists
         # This handles cases where multiple patterns match the same construct
@@ -777,318 +1062,382 @@ class {{MODULE_CLASS}}:
         except Exception as e:
             log.info('[{{LANGUAGE}}] Bookmark error: ' + str(e))
     
-    def _build_line_context_map(self):
-        """
-        Build a mapping from line numbers to their containing function/method fullname.
-        
-        Uses self.object_lines (populated during light_parse) to determine which 
-        callable (function, method) contains each line.
-        Lines outside any callable map to the program (file path).
-        
-        Returns:
-            dict: {line_number: fullname_of_containing_callable}
-        """
-        line_to_context = {}
-        
-        # Use object_lines populated during _extract_object
-        # Filter to only include callable types (Functions, Methods)
-        callables = []
-        for fullname, (start_line, end_line) in self.object_lines.items():
-            # Skip Program objects (they are containers, not callables)
-            if fullname == self.path:
-                continue
-            callables.append({
-                'fullname': fullname,
-                'start_line': start_line,
-                'end_line': end_line
-            })
-        
-        # Sort by specificity: innermost (smallest range) first
-        # This ensures nested functions are matched before their parents
-        callables.sort(key=lambda x: (x['end_line'] - x['start_line'], x['start_line']))
-        
-        # Build the line-to-context map
-        # For each callable, map its line range to its fullname
-        for callable_info in callables:
-            start = callable_info['start_line']
-            end = callable_info['end_line']
-            fullname = callable_info['fullname']
-            
-            for line in range(start, end + 1):
-                # Only set if not already set (inner functions take precedence)
-                if line not in line_to_context:
-                    line_to_context[line] = fullname
-        
-        return line_to_context
-    
     # =========================================================================
-    # PHASE 2: FULL PARSING
+    # PHASE 2: FULL PARSING - LINK DETECTION (MANUAL IMPLEMENTATION REQUIRED)
+    # =========================================================================
+    #
+    # IMPORTANT: Generic link detection has been removed from this generator.
+    #
+    # WHY GENERIC LINK DETECTION DOES NOT WORK:
+    # -----------------------------------------
+    # 1. Without a full semantic parser, we cannot determine variable types
+    #    Example: "obj.method()" - we don't know what type "obj" is
+    #
+    # 2. Without import resolution, we cannot link cross-file calls
+    #    Example: "from utils import helper" then "helper()" - requires import analysis
+    #
+    # 3. Different languages have radically different calling conventions
+    #    Example: Lua uses ":" for method calls, Ruby uses implicit receivers
+    #
+    # 4. Generic regex patterns produce too many false positives
+    #    Example: "if(" matches as a function call without language-specific keywords
+    #
+    # WHAT YOU MUST IMPLEMENT:
+    # ------------------------
+    # For each technology, you must implement custom logic in:
+    #   - full_parse(): Detect calls using technology-specific patterns
+    #   - resolve(): Resolve call targets using technology-specific rules
+    #   - save_links(): Create links using the CAST SDK
+    #
+    # REUSING OBJECTS FROM PASS 1:
+    # ----------------------------
+    # All objects created in Pass 1 are available in:
+    #   - self.objects: dict {fullname -> CustomObject}
+    #   - self.object_lines: dict {fullname -> (start_line, end_line)}
+    #   - library.symbols: dict {fullname -> CustomObject} (global)
+    #   - library.symbols_by_name: dict {short_name -> [fullnames]} (global)
+    #
     # =========================================================================
     
     def full_parse(self):
         """
-        PHASE 2: Full parsing for detailed analysis.
+        PHASE 2: Full parsing for link detection - MANUAL IMPLEMENTATION REQUIRED.
         
-        This method:
-        1. Re-parses the AST with more detail (if needed)
-        2. Extracts function calls and references
-        3. Stores pending links for resolution
+        This method is a SKELETON. You must implement technology-specific logic
+        to detect function/method calls in the source code.
         
-        Override _extract_calls() and _extract_references() for custom logic.
+        WHAT TO IMPLEMENT:
+        ------------------
+        1. Parse the source code to find call sites (function calls, method calls)
+        2. For each call, determine:
+           - The CALLER: Which function/method contains the call?
+           - The CALLEE: What is being called? (function name, method name)
+           - The LINE: Where does the call occur?
+        3. Store call information in self.pending_links for later resolution
+        
+        ACCESSING SOURCE CODE:
+        ----------------------
+        - self.source_content: Raw source file content (string)
+        - self.path: Full path to the source file
+        
+        ACCESSING OBJECTS FROM PASS 1:
+        ------------------------------
+        - self.objects: All objects created in this file {fullname: CustomObject}
+        - self.object_lines: Line ranges for each object {fullname: (start, end)}
+        - self.program: The Program (file-level) object
+        
+        PENDING LINKS FORMAT:
+        ---------------------
+        Each entry in self.pending_links should be a dict:
+        {
+            'caller': fullname of the calling function/method,
+            'callee': name of the called function/method (to be resolved),
+            'type': 'call' (or other link type),
+            'line': line number of the call
+        }
+        
+        EXAMPLE IMPLEMENTATION (pseudo-code):
+        -------------------------------------
+        def full_parse(self):
+            if not self.source_content:
+                return
+            
+            lines = self.source_content.splitlines()
+            for line_num, line in enumerate(lines, 1):
+                # Technology-specific: detect calls in this line
+                # Example for a simple "name()" pattern:
+                for match in re.finditer(r'\\b(\\w+)\\s*\\(', line):
+                    callee_name = match.group(1)
+                    
+                    # Skip language keywords
+                    if callee_name in {'if', 'while', 'for'}:
+                        continue
+                    
+                    # Find which function contains this line
+                    caller = self._find_caller_for_line(line_num)
+                    
+                    self.pending_links.append({
+                        'caller': caller,
+                        'callee': callee_name,
+                        'type': 'call',
+                        'line': line_num
+                    })
         """
-        if not self.source_content:
-            return
-        
-        # Extract function/method calls
-        self._extract_calls()
-        
-        # Extract other references (variables, types, etc.)
-        self._extract_references()
+        # =====================================================================
+        # SKELETON - IMPLEMENT YOUR TECHNOLOGY-SPECIFIC CALL DETECTION HERE
+        # =====================================================================
+        #
+        # This method intentionally does nothing by default.
+        # You must implement call detection for your specific technology.
+        #
+        # See the docstring above for guidance on what to implement.
+        #
+        pass
     
     def _extract_calls(self):
         """
-        Extract function and method calls from the source.
+        SKELETON - Technology-specific call extraction.
         
-        Call pattern is configurable via config_input.json grammar section.
-        Stores discovered calls in pending_links for later resolution.
+        THIS METHOD IS INTENTIONALLY EMPTY.
+        Implement technology-specific call detection logic here.
         
-        Uses the AST built during light_parse to determine which function/method
-        contains each call, ensuring proper caller context for link creation.
+        See full_parse() docstring for implementation guidance.
         """
-        if not self.source_content:
-            return
-        
-        # Call pattern - configurable via config_input.json
-        call_pattern_str = r'''{{CALL_PATTERN}}'''
-        if not call_pattern_str:
-            return
-        
-        # Compile pattern with appropriate flags
-        # Use VERBOSE mode if pattern contains comments (#) or explicit newlines
-        # This allows patterns like:
-        #   (?:
-        #       \bPERFORM\s+(?P<callee>\w+)  # PERFORM call
-        #     | \bCALL\s+(?P<callee2>\w+)    # CALL statement  
-        #   )
-        try:
-            if '\n' in call_pattern_str or '#' in call_pattern_str:
-                call_pattern = re.compile(call_pattern_str, re.VERBOSE | re.IGNORECASE)
-            else:
-                call_pattern = re.compile(call_pattern_str, re.IGNORECASE)
-        except re.error as e:
-            log.warning('[{{LANGUAGE}}] Invalid call_pattern regex: ' + str(e))
-            return
-        
-        # Build a line-to-context mapping from AST
-        # This tells us which function/method/class contains each line
-        line_to_context = self._build_line_context_map()
-        
-        lines = self.source_content.splitlines()
-        
-        for i, line in enumerate(lines, 1):
-            # Skip comment lines (basic detection)
-            stripped = line.strip()
-            if stripped.startswith('{{COMMENT}}') or stripped.startswith('#'):
-                continue
-            
-            # Determine the caller context for this line
-            current_context = line_to_context.get(i, self.path)
-            
-            # Find all potential calls in the line
-            for match in call_pattern.finditer(line):
-                # Extract callee name from the match
-                # Strategy: 
-                # 1. First, iterate ALL named groups and take the first non-None value
-                # 2. Fallback to numbered groups (1, 2, 3...)
-                # This handles patterns with alternatives where different groups match
-                callee_name = None
-                
-                # Method 1: Check all named groups from groupdict()
-                # This is the most reliable for patterns with alternatives like:
-                # (?:PERFORM\s+(?P<callee>...)|CALL\s+(?P<callee2>...))
-                groups = match.groupdict()
-                if groups:
-                    for group_name, value in groups.items():
-                        if value is not None:
-                            callee_name = value
-                            break
-                
-                # Method 2: Fallback to numbered groups if no named group matched
-                if not callee_name:
-                    # Try groups 1, 2, 3... in order
-                    for group_idx in range(1, len(match.groups()) + 1):
-                        try:
-                            value = match.group(group_idx)
-                            if value is not None:
-                                callee_name = value
-                                break
-                        except IndexError:
-                            break
-                
-                if not callee_name:
-                    continue
-                
-                # Skip common keywords that look like function calls
-                if callee_name.lower() in self._get_keywords():
-                    continue
-                
-                # Skip self-references (function calling itself on definition line)
-                # This prevents "function Foo.new(...)" from creating a call new -> new
-                caller_short = current_context.split('.')[-1] if '.' in current_context else current_context
-                # Also handle : separator (Lua methods)
-                if ':' in caller_short:
-                    caller_short = caller_short.split(':')[-1]
-                if callee_name == caller_short:
-                    # Check if this is likely the definition line (contains function/def keyword)
-                    if re.search(r'\b(function|def|func|sub|procedure)\b', stripped, re.IGNORECASE):
-                        continue
-                
-                # Add to pending links
-                self.pending_links.append({
-                    'caller': current_context,
-                    'callee': callee_name,
-                    'type': 'call',
-                    'line': i
-                })
-    
-    def _get_keywords(self):
-        """
-        Get language keywords to exclude from call detection.
-        
-        Keywords are configurable via config_input.json grammar section.
-        """
-        return {
-{{KEYWORDS_SET}}
-        }
-    
-    def _extract_references(self):
-        """
-        Extract non-call references (types, variables, etc.).
-        
-        Override for language-specific reference extraction.
-        """
-        # Default implementation is a no-op
-        # Override to extract type references, variable usages, etc.
+        # =====================================================================
+        # IMPLEMENT YOUR TECHNOLOGY-SPECIFIC CALL DETECTION HERE
+        # =====================================================================
         pass
     
+    def _find_caller_for_line(self, line_num):
+        """
+        HELPER: Find which function/method contains a given line number.
+        
+        Use this in your full_parse() implementation to determine the caller
+        for a call detected on a specific line.
+        
+        Args:
+            line_num (int): Line number (1-based)
+            
+        Returns:
+            str: Fullname of the containing function/method, or self.path if at file level
+        """
+        # Search through object line ranges to find the innermost containing object
+        best_match = self.path  # Default to file-level
+        best_range = float('inf')
+        
+        for fullname, (start, end) in self.object_lines.items():
+            if fullname == self.path:
+                continue  # Skip the Program object
+            if start <= line_num <= end:
+                range_size = end - start
+                if range_size < best_range:
+                    best_match = fullname
+                    best_range = range_size
+        
+        return best_match
+    
     # =========================================================================
-    # RESOLUTION AND LINK CREATION
+    # RESOLUTION AND LINK CREATION - MANUAL IMPLEMENTATION REQUIRED
+    # =========================================================================
+    #
+    # The methods below are SKELETONS for technology-specific implementation.
+    #
+    # CAST SDK LINK TYPES (IMPORTANT - ONLY THESE ARE ALLOWED):
+    # ----------------------------------------------------------
+    # The CAST SDK only supports a predefined set of link types.
+    # You CANNOT invent new link types - they must be declared in MetaModel XML.
+    #
+    # Common predefined link types:
+    #   - 'callLink'     : Function/method calls
+    #   - 'useLink'      : General usage (read/write access)
+    #   - 'relyonLink'   : Dependency relationship
+    #   - 'inheritLink'  : Inheritance relationship
+    #   - 'referLink'    : Reference/mention
+    #
+    # To check available link types, see the MetaModel XML files in the
+    # product_extensions_examples/ folder or the CAST SDK documentation.
+    #
     # =========================================================================
     
     def resolve(self, library):
         """
-        Resolve references and prepare links.
+        PHASE 2: Resolve call targets - MANUAL IMPLEMENTATION REQUIRED.
         
-        Uses the library's symbol table to resolve callee names
-        to actual objects.
+        This method is a SKELETON. You must implement technology-specific logic
+        to resolve call targets (i.e., determine which object is being called).
+        
+        WHAT TO IMPLEMENT:
+        ------------------
+        1. Iterate through self.pending_links (populated by full_parse)
+        2. For each pending link, resolve the callee name to an actual object
+        3. Update the link entry with the resolved object
+        
+        ACCESSING THE GLOBAL SYMBOL TABLE:
+        ----------------------------------
+        The 'library' parameter provides access to ALL objects across ALL files:
+        
+        - library.symbols: dict {fullname -> CustomObject}
+          All objects indexed by their full qualified name.
+          Example: library.symbols['src/utils.py.helper']
+        
+        - library.symbols_by_name: dict {short_name -> [fullnames]}
+          Objects indexed by short name (may have multiple matches).
+          Example: library.symbols_by_name['helper'] -> ['file1.helper', 'file2.helper']
+        
+        RESOLUTION STRATEGIES:
+        ----------------------
+        Different technologies require different strategies:
+        
+        1. INTRA-FILE RESOLUTION (same file):
+           - Look for the callee in self.objects first
+           - Simple: callee_obj = self.objects.get(fullname)
+        
+        2. CROSS-FILE RESOLUTION (across files):
+           - Use library.symbols_by_name to find candidates
+           - May require import analysis to disambiguate
+        
+        3. METHOD RESOLUTION (on objects):
+           - Requires type information (not available in generic parser)
+           - Usually requires language-specific semantic analysis
+        
+        UPDATING PENDING LINKS:
+        -----------------------
+        For each resolved link, add the resolved object to the link_info dict:
+        
+            link_info['resolved_callee'] = callee_obj  # The CustomObject
+            link_info['resolved_callee_fullname'] = fullname  # For debugging
+        
+        Links without 'resolved_callee' will be skipped by save_links().
         
         Args:
-            library ({{LANGUAGE}}Library): The global library for symbol resolution
+            library: The global library containing all symbols across all files
         """
-        log.debug('[{{LANGUAGE}}] Resolving references for: ' + self.path)
-        
-        resolved_links = []
-        
-        for link_info in self.pending_links:
-            callee_name = link_info['callee']
-            
-            # Try to resolve the callee (returns tuple: obj, fullname)
-            callee_obj, callee_fullname = library.resolve_symbol(callee_name, self)
-            
-            if callee_obj:
-                link_info['resolved_callee'] = callee_obj
-                link_info['resolved_callee_fullname'] = callee_fullname
-                resolved_links.append(link_info)
-            else:
-                log.debug('[{{LANGUAGE}}] Unresolved reference: ' + callee_name)
-        
-        self.pending_links = resolved_links
-    
-    def save_objects(self):
-        """
-        Save all objects to CAST.
-        
-        Note: Objects are already saved during extraction.
-        This method returns the count for statistics.
-        
-        Returns:
-            int: Number of objects created
-        """
-        return len(self.objects)
+        # =====================================================================
+        # SKELETON - IMPLEMENT YOUR TECHNOLOGY-SPECIFIC RESOLUTION HERE
+        # =====================================================================
+        #
+        # Example implementation (pseudo-code):
+        #
+        # for link_info in self.pending_links:
+        #     callee_name = link_info['callee']
+        #     
+        #     # Strategy 1: Try same-file resolution first
+        #     for fullname, obj in self.objects.items():
+        #         if fullname.endswith('.' + callee_name):
+        #             link_info['resolved_callee'] = obj
+        #             link_info['resolved_callee_fullname'] = fullname
+        #             break
+        #     
+        #     # Strategy 2: Try cross-file if not found locally
+        #     if 'resolved_callee' not in link_info:
+        #         candidates = library.symbols_by_name.get(callee_name, [])
+        #         if len(candidates) == 1:  # Only if unambiguous
+        #             fullname = candidates[0]
+        #             link_info['resolved_callee'] = library.symbols[fullname]
+        #             link_info['resolved_callee_fullname'] = fullname
+        #
+        pass
     
     def save_links(self):
         """
-        Create all resolved links in CAST.
+        PHASE 2: Create links in CAST - MANUAL IMPLEMENTATION REQUIRED.
         
-        Note: We skip links where the caller is the Program (file level),
-        as the containment relationship already expresses this.
-        Only function/method -> function/method/class links are meaningful.
+        This method creates links using the CAST SDK for all resolved calls.
+        You may need to customize this for technology-specific link types.
+        
+        =====================================================================
+        CAST SDK: create_link() FUNCTION
+        =====================================================================
+        
+        The create_link() function creates a relationship between two objects
+        in the CAST knowledge base. These links are visible in CAST Imaging
+        and used for architecture analysis.
+        
+        FUNCTION SIGNATURE:
+        -------------------
+        from cast.analysers import create_link, Bookmark
+        
+        create_link(link_type, caller, callee)
+        create_link(link_type, caller, callee, bookmark)
+        
+        PARAMETERS:
+        -----------
+        - link_type (str): The type of link to create.
+          MUST be one of the predefined types (see below).
+          Examples: 'callLink', 'useLink', 'inheritLink'
+        
+        - caller (CustomObject): The SOURCE object (who is calling).
+          Must be a saved CustomObject from Pass 1.
+        
+        - callee (CustomObject): The TARGET object (who is being called).
+          Must be a saved CustomObject from Pass 1.
+        
+        - bookmark (Bookmark, optional): Source location of the call.
+          Allows navigation to the exact line in CAST Imaging.
+        
+        PREDEFINED LINK TYPES (DO NOT INVENT NEW ONES):
+        ------------------------------------------------
+        The following link types are predefined in CAST:
+        
+        | Link Type     | Meaning                        | Example                    |
+        |---------------|--------------------------------|----------------------------|
+        | 'callLink'    | Function/method invocation     | foo() calls bar()          |
+        | 'useLink'     | Uses/reads/writes              | function uses variable     |
+        | 'relyonLink'  | Dependency relationship        | module relies on library   |
+        | 'inheritLink' | Inheritance                    | class extends parent       |
+        | 'referLink'   | Reference/mention              | code references constant   |
+        
+        Custom link types can be defined in the MetaModel XML file.
+        
+        CREATING A BOOKMARK:
+        --------------------
+        from cast.analysers import Bookmark
+        
+        # Bookmark(file, start_line, start_col, end_line, end_col)
+        bookmark = Bookmark(self.file, line_num, 1, line_num, -1)
+        
+        - file: The CAST File object (self.file)
+        - start_line, end_line: 1-based line numbers
+        - start_col: 1-based column (usually 1 for start of line)
+        - end_col: -1 means end of line
+        
+        EXAMPLE:
+        --------
+        # Create a call link from function A to function B at line 42
+        caller_obj = self.objects['src/main.py.process']
+        callee_obj = library.symbols['src/utils.py.helper']
+        bookmark = Bookmark(self.file, 42, 1, 42, -1)
+        
+        create_link('callLink', caller_obj, callee_obj, bookmark)
+        
+        WHAT THIS CREATES IN IMAGING:
+        -----------------------------
+        In CAST Imaging, this link will appear as:
+        
+            process() ──callLink──> helper()
+        
+        Users can click on the link to navigate to line 42 in the source file.
+        
+        =====================================================================
         
         Returns:
             int: Number of links created
         """
-        links_created = 0
-        
-        for link_info in self.pending_links:
-            if 'resolved_callee' not in link_info:
-                continue
-            
-            caller_fullname = link_info['caller']
-            callee_obj = link_info['resolved_callee']
-            callee_name = link_info.get('callee', 'unknown')
-            link_type = link_info.get('type', 'call')
-            line = link_info.get('line', 0)
-            
-            # Skip links where caller is the Program (file path)
-            # The containment (parent/child) relationship already expresses this
-            if caller_fullname == self.path:
-                continue
-            
-            # Find caller object
-            caller_obj = self.objects.get(caller_fullname)
-            if not caller_obj:
-                log.debug('[{{LANGUAGE}}] Caller not found: ' + caller_fullname)
-                continue
-            
-            # Get a readable caller name for logging
-            caller_name = caller_fullname.split('.')[-1] if '.' in caller_fullname else caller_fullname
-            
-            if caller_obj and callee_obj:
-                try:
-                    # Store link info for summary (will be logged at end of analysis)
-                    if not hasattr(self, 'created_links'):
-                        self.created_links = []
-                    self.created_links.append({
-                        'caller': caller_fullname,
-                        'callee': callee_name,
-                        'callee_fullname': link_info.get('resolved_callee_fullname', ''),
-                        'line': line
-                    })
-                    
-                    log.debug('[{{LANGUAGE}}] CALL: ' + caller_name + ' -> ' + callee_name + ' (line ' + str(line) + ')')
-                    
-                    # Create bookmark for the call location
-                    bookmark = None
-                    if line > 0 and self.file:
-                        try:
-                            bookmark = Bookmark(self.file, line, 1, line, -1)
-                        except:
-                            pass
-                    
-                    # Create the link
-                    if bookmark:
-                        create_link('callLink', caller_obj, callee_obj, bookmark)
-                    else:
-                        create_link('callLink', caller_obj, callee_obj)
-                    
-                    links_created += 1
-                    
-                except Exception as e:
-                    log.debug('[{{LANGUAGE}}] Failed to create link: ' + str(e))
-        
-        return links_created
-        
-        return links_created
+        # =====================================================================
+        # SKELETON - IMPLEMENT YOUR TECHNOLOGY-SPECIFIC LINK CREATION HERE
+        # =====================================================================
+        #
+        # Example implementation:
+        #
+        # links_created = 0
+        # for link_info in self.pending_links:
+        #     if 'resolved_callee' not in link_info:
+        #         continue  # Skip unresolved links
+        #     
+        #     caller_fullname = link_info['caller']
+        #     callee_obj = link_info['resolved_callee']
+        #     line = link_info.get('line', 0)
+        #     
+        #     caller_obj = self.objects.get(caller_fullname)
+        #     if not caller_obj:
+        #         continue
+        #     
+        #     # Create bookmark for navigation
+        #     bookmark = None
+        #     if line > 0 and self.file:
+        #         bookmark = Bookmark(self.file, line, 1, line, -1)
+        #     
+        #     # Create the link using CAST SDK
+        #     if bookmark:
+        #         create_link('callLink', caller_obj, callee_obj, bookmark)
+        #     else:
+        #         create_link('callLink', caller_obj, callee_obj)
+        #     
+        #     links_created += 1
+        # 
+        # return links_created
+        #
+        return 0  # Skeleton returns 0 - implement your logic above
     
     # =========================================================================
     # CLEANUP
@@ -1096,12 +1445,13 @@ class {{MODULE_CLASS}}:
     
     def clean_ast(self):
         """
-        Clean up the AST to free memory.
+        Clean up the AST and temporary data to free memory.
         
         Called after Phase 2 processing is complete.
         """
         self.ast = None
         self.source_content = None
+        self.cleaned_source = None
         log.debug('[{{LANGUAGE}}] Cleaned AST for: ' + self.path)
 
 

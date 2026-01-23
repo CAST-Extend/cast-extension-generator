@@ -1,47 +1,239 @@
 # CAST Extension Generator
 
-A **100% generic** tool to automatically generate CAST Universal Analyzer extensions for any programming language using a simple JSON configuration file.
+A tool to generate CAST Universal Analyzer extension **scaffolds** for any programming language. The generator automates object detection and creation, while link detection (both same-technology and cross-technology) requires manual, technology-specific implementation.
 
 ## Table of Contents
 
-- [Overview](#overview)
+- [What This Generator Does](#what-this-generator-does)
+- [What This Generator Does NOT Do](#what-this-generator-does-not-do)
+- [Why Generic Link Detection Is Impossible](#why-generic-link-detection-is-impossible)
+- [3-Level Architecture](#3-level-architecture)
 - [Quick Start](#quick-start)
 - [Configuration Reference](#configuration-reference)
-- [Quality of Grammar Inputs](#quality-of-grammar-inputs)
-- [How It Works](#how-it-works)
-- [Link Detection](#link-detection)
-- [Extending Generated Extensions](#extending-generated-extensions)
-- [Custom Parsing Override](#custom-parsing-override)
-- [Analysis Summary Output](#analysis-summary-output)
+- [Implementing Link Detection (Pass 2)](#implementing-link-detection-pass-2)
+- [Implementing Cross-Technology Links (Application Level)](#implementing-cross-technology-links-application-level)
+- [CAST SDK Reference](#cast-sdk-reference)
+- [Using LLMs to Assist Implementation](#using-llms-to-assist-implementation)
+- [Deployment](#deployment)
 - [Limitations](#limitations)
-- [Examples](#examples)
-- [Troubleshooting](#troubleshooting)
 
 ---
 
-## Overview
+## What This Generator Does
 
-The CAST Extension Generator creates fully functional CAST analyzer extensions from a single configuration file. Instead of writing Python code manually, you define:
+The generator **automatically** produces:
 
-- **Language metadata** (name, file extensions, version)
-- **Object types** to detect (classes, functions, methods, etc.)
-- **Grammar patterns** (regex patterns to identify code structures)
+| Component | Generated Automatically | Status |
+|-----------|------------------------|--------|
+| Extension structure | ✅ Yes | Complete scaffold |
+| MetaModel XML | ✅ Yes | Object types and categories |
+| Language patterns XML | ✅ Yes | File extensions, comments |
+| Pass 1: Object detection | ✅ Yes | Fully functional |
+| Pass 1: Object creation | ✅ Yes | Fully functional |
+| Pass 2: Skeleton methods | ✅ Yes | Empty templates with documentation |
+| Application Level: Template | ✅ Yes | Empty template with documentation |
+| Test scaffolding | ✅ Yes | Ready to extend |
+| NuGet packaging | ✅ Yes | Build scripts included |
 
-The generator produces a complete extension with:
+**Pass 1 is fully automatic.** You define regex patterns in the config file, and the generator produces code that:
+- Detects classes, functions, methods, and other structures
+- Creates CAST objects with proper types and hierarchy
+- Sets bookmarks for source code navigation
+- Builds a global symbol table for resolution
 
-- Analyzer-level code (2-pass parsing architecture)
-- Module-level parsing logic
-- Application-level hooks for cross-technology analysis
-- XML metamodel and language pattern files
-- Test scaffolding
+---
+
+## What This Generator Does NOT Do
+
+The generator **does NOT** produce:
+
+| Component | Generated | Reason |
+|-----------|-----------|--------|
+| Pass 2: Call detection | ❌ Skeleton only | Requires technology-specific parsing |
+| Pass 2: Call resolution | ❌ Skeleton only | Requires semantic analysis |
+| Pass 2: Link creation | ❌ Skeleton only | Depends on resolution |
+| Application Level: Cross-tech links | ❌ Template only | Requires custom matching logic |
+| Import analysis | ❌ Not implemented | Language-specific semantics |
+| Type inference | ❌ Not implemented | Requires full parser |
+
+**Pass 2 methods and Application Level are empty skeletons.** You must implement technology-specific logic.
+
+---
+
+## Why Generic Link Detection Is Impossible
+
+### The Core Problem: Same-Technology Links
+
+Consider this simple Python code:
+
+```python
+def process(data):
+    data.add(item)  # Which add() is this?
+```
+
+Without knowing the **type** of `data`, we cannot determine which `add()` method is being called. Is it:
+- `list.add()`?
+- `set.add()`?
+- `CustomClass.add()`?
+
+A regex-based parser cannot answer this question. It lacks:
+
+1. **Type information** - Variables don't carry type annotations in most languages
+2. **Import resolution** - We don't know what modules are imported
+3. **Control flow analysis** - The type might change at runtime
+4. **Inheritance chains** - Method resolution depends on class hierarchy
+
+### The Core Problem: Cross-Technology Links
+
+Now consider linking between technologies:
+
+```python
+# Python code
+def fetch_user_data():
+    result = call_api("/api/users")  # Which Java endpoint is this?
+```
+
+```java
+// Java code
+@RequestMapping("/api/users")
+public Users getUsers() { ... }
+
+@RequestMapping("/api/user/{id}")
+public User getUserById() { ... }
+```
+
+To create accurate cross-technology links, you need:
+
+1. **Technology-specific knowledge** - How does Python call Java? REST? gRPC? Direct?
+2. **Naming conventions** - Does your project follow specific patterns?
+3. **Multiple conditions** - Name matching alone creates false positives
+4. **Context analysis** - Parse source code for concrete evidence (URLs, table names, etc.)
+
+### False Positives Are Worse Than Missing Links
+
+Creating a link from `fetch_user_data()` to the wrong endpoint or database table is **worse** than creating no link at all:
+
+- **False positives** corrupt architectural analysis
+- **False positives** mislead developers about dependencies
+- **False positives** cannot be easily identified and removed
+
+The previous generic implementation attempted heuristics (same-file preference, single-candidate matching), but these still produced unacceptable false positive rates.
+
+### The Honest Solution
+
+Rather than pretend generic link detection works, this generator:
+
+1. **Fully automates** what CAN be done generically (object detection)
+2. **Provides skeletons** with detailed documentation for what CANNOT
+3. **Empowers developers** to implement correct, technology-specific logic
+4. **Separates concerns** between same-technology links (Pass 2) and cross-technology links (Application Level)
+
+---
+
+## 3-Level Architecture
+
+CAST analyzers use a 3-level architecture:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         PASS 1: AUTOMATIC                          │
+│                     (Fully implemented by generator)                │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  start_file(file)                                                   │
+│  ├── Read source file                                               │
+│  ├── Parse with regex patterns                                      │
+│  ├── Detect: Classes, Functions, Methods, etc.                     │
+│  ├── Create CAST objects with types and bookmarks                  │
+│  └── Store in library for Pass 2                                    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                     PASS 2: MANUAL IMPLEMENTATION                   │
+│                (Skeleton only - YOU must implement)                 │
+│                  Same-technology link detection                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  end_analysis()                                                     │
+│  ├── full_parse()     → Detect calls (YOUR CODE)                   │
+│  ├── resolve()        → Resolve targets (YOUR CODE)                │
+│  └── save_links()     → Create links (YOUR CODE)                   │
+│                                                                     │
+│  Available data:                                                    │
+│  ├── self.objects     → All objects in this file                   │
+│  ├── self.object_lines → Line ranges for each object               │
+│  ├── library.symbols  → All objects across all files               │
+│  └── library.symbols_by_name → Objects indexed by short name       │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                 APPLICATION LEVEL: MANUAL IMPLEMENTATION            │
+│                (Template only - YOU must implement)                 │
+│                 Cross-technology link detection                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  end_application(application)                                       │
+│  └── Create links between different technologies (YOUR CODE)       │
+│                                                                     │
+│  Available data:                                                    │
+│  ├── application.search_objects() → Find objects by type/name      │
+│  ├── application.objects()        → All objects (all technologies) │
+│  ├── application.get_files()      → All analyzed files             │
+│  └── open_source_file()           → Read source code               │
+│                                                                     │
+│  Use cases:                                                         │
+│  ├── Your Language → Database Tables                               │
+│  ├── Your Language → Java/C# REST APIs                             │
+│  ├── Your Language → Configuration files                           │
+│  └── Your Language → Message Queues/Topics                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Pass 1: What Happens Automatically
+
+For each source file, the generator's code:
+
+1. **Reads** the file content
+2. **Matches** regex patterns from your config
+3. **Creates** CAST `CustomObject` instances
+4. **Sets** parent relationships based on hierarchy config
+5. **Saves** bookmarks for F11 code navigation
+6. **Registers** objects in a global symbol table
+
+### Pass 2: What You Must Implement (Same-Technology Links)
+
+After all files are processed, you must implement:
+
+1. **Call detection** (`full_parse()`) - Find call sites in source code
+2. **Call resolution** (`resolve()`) - Match calls to target objects within your technology
+3. **Link creation** (`save_links()`) - Use CAST SDK to create links
+
+The generated module file contains **detailed documentation** in each skeleton method explaining exactly what to implement.
+
+### Application Level: What You Must Implement (Cross-Technology Links)
+
+After **all analyzer-level extensions** (Java, SQL, your technology, etc.) have completed:
+
+1. **Find objects** from your technology and other technologies
+2. **Implement matching logic** with multiple conditions to avoid false positives
+3. **Create cross-technology links** using CAST SDK
+
+The generated `*_application_level.py` file contains an **empty template** with documentation and helper methods.
+
+**Example scenarios:**
+- Your language function → SQL Table
+- Your language code → Java REST endpoint
+- Your language module → Configuration file
+- Your language publisher → Message Queue
 
 ---
 
 ## Quick Start
 
-### 1. Create a Configuration File
-
-Create a JSON file (e.g., `config_mylang.json`):
+### 1. Create Configuration File
 
 ```json
 {
@@ -56,14 +248,17 @@ Create a JSON file (e.g., `config_mylang.json`):
   "multiline_comment": { "begin": "/*", "end": "*/" },
   "objects": {
     "Program": { "parent": "file", "pattern_keys": [] },
-    "Function": { "parent": "Program", "pattern_keys": ["function"] }
+    "Class": { "parent": "Program", "pattern_keys": ["class"] },
+    "Function": { "parent": "Program", "pattern_keys": ["function"] },
+    "Method": { "parent": "Class", "pattern_keys": ["method"] }
   },
   "grammar": {
     "block_delimiters": "braces",
     "patterns": {
-      "function": ["^\\s*func\\s+(?P<name>\\w+)\\s*\\("]
+      "class": ["^\\s*class\\s+(?P<name>\\w+)"],
+      "function": ["^\\s*func\\s+(?P<name>\\w+)\\s*\\("],
+      "method": ["^\\s+func\\s+(?P<name>\\w+)\\s*\\("]
     },
-    "call_pattern": "\\b(\\w+)\\s*\\(",
     "keywords": ["if", "else", "for", "while", "return"]
   }
 }
@@ -71,7 +266,7 @@ Create a JSON file (e.g., `config_mylang.json`):
 
 ### 2. Get Your file_no
 
-Before generating the extension, you need to reserve a unique `file_no` for your language:
+Before generating the extension, reserve a unique `file_no`:
 
 1. Go to the CAST SharePoint UA Corner:
    ```
@@ -80,237 +275,60 @@ Before generating the extension, you need to reserve a unique `file_no` for your
 
 2. Reserve a range of IDs (e.g., `2,193,000 - 2,193,999`)
 
-3. Calculate your `file_no` using this formula:
+3. Calculate your `file_no`:
    ```
    file_no = (start_id - 2,000,000) / 1,000
    ```
 
-   **Example:**
-   ```
-   Reserved range: 2,193,000 - 2,193,999
-   file_no = (2,193,000 - 2,000,000) / 1,000 = 193
-   ```
-
-4. Use this `file_no` in your configuration file
-
 ### 3. Generate the Extension
 
 ```bash
-python generate_extension.py config_mylang.json output_folder
+python generate_extension.py config_mylang.json outputs/
 ```
 
-### 4. Deploy to CAST Imaging
+### 4. Run Tests (Object Detection)
 
-To use your extension in CAST Imaging:
-
-1. **Create the NuGet package**
-   
-   Navigate to your generated extension folder and run the batch file:
-   ```bash
-   cd output_folder/com.castsoftware.uc.mylang
-   .\plugin-to-nupkg.bat
-   ```
-   This creates a `.nupkg` file in the extension folder.
-
-2. **Copy the package to CAST extensions folder**
-   
-   Copy the generated `.nupkg` file to:
-   ```
-   C:\Cast\ProgramData\CAST\AIP-Console-Standalone\data\shared\extensions\
-   ```
-
-3. **Handle conflicts with existing extensions (if needed)**
-   
-   If your extension conflicts with an existing CAST product extension (e.g., you're creating a custom Go extension while the official Go extension exists), you need to disable the conflicting extension:
-   
-   1. Open **CAST Admin Center**
-   2. Go to **Extensions** → **Strategy** → **All Extensions**
-   3. Search for the product extension you want to disable (e.g., `com.castsoftware.go`)
-   4. Click the **Deny List** toggle to disable it
-
-4. **Run the analysis**
-   
-   Once the extension is deployed (and conflicts resolved):
-   1. Create a new application or use an existing one in CAST Console
-   2. Run **Fast Scan** to detect source files
-   3. Run **Deep Analysis** to analyze the code with your extension
-
-### Creating an Analysis Unit Manually
-
-Since the generated extension doesn't include a DMT discoverer, files won't be automatically detected during Fast Scan. You need to manually create an Analysis Unit:
-
-1. **Run Fast Scan** on your application
-
-2. **Start Deep Analysis**
-
-3. **Wait for the first second of the Analysis phase** to begin
-
-4. **Go to the Config tab** (gear icon on the left) → Click on **Universal Technology**
-
-5. **Click the +ADD button** to create a new Analysis Unit
-
-6. **Fill in the fields:**
-   - **Name**: Your technology name (e.g., "Go", "Lua", "MyLang")
-   - **Package**: `main_sources`
-   - **Select Languages**: Choose your technology from the dropdown list
-
-7. **Save and continue with Deep Analysis**
-
-Your extension's analyzer will now be triggered for the files matching your language's extensions.
-
-> **Note:** This manual approach works for development and testing. For production/distribution, you'll want to implement a proper DMT discoverer so the extension is fully "plug and play" without manual configuration.
-
-### 5. Validate the MetaModel Configuration (Optional)
-
-If you want to verify that the generated MetaModel XML files are valid before running tests, you can use the UA Package Assistant:
-
-1. Open the UA Package Assistant:
-   ```
-   C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CAST 8.x\UAPackageAssistant.exe
-   ```
-
-2. Browse to your generated extension folder (the one containing the XML files)
-
-3. **Important:** Check the box "Validate package MetaModel file only"
-
-4. Click "Validate"
-
-5. Check the Report section for any errors
-
-If validation is successful, you'll see "Validation successful" in the Report section.
-
-### 5. Test the Extension
-
-Open the generated extension folder in your IDE (PyCharm for example) and configure the Python interpreter to use the CAST 8.3 Python 3.4:
-
-```
-C:/Cast/ProgramFiles/CAST/8.3/ThirdParty/Python34/python.exe
+```bash
+cd outputs/com.castsoftware.uc.mylang
+python -m pytest tests/
 ```
 
-Then run the test file `tests/test_language.py` from your IDE's test explorer.
+### 5. Implement Link Detection (Pass 2)
+
+Open `mylang_module.py` and implement:
+- `full_parse()` - Technology-specific call detection
+- `resolve()` - Technology-specific call resolution  
+- `save_links()` - Link creation using CAST SDK
+
+### 6. Implement Cross-Technology Links (Application Level)
+
+Open `mylang_application_level.py` and implement:
+- `end_application()` - Cross-technology link creation
+
+### 7. Deploy
+
+```bash
+.\plugin-to-nupkg.bat
+# Copy .nupkg to CAST extensions folder
+```
 
 ---
 
 ## Configuration Reference
 
-### Top-Level Properties
+### Required Fields
 
-| Property | Type | Required | Description |
-|----------|------|----------|-------------|
-| `language` | string | ✓ | Language name (Python, Ruby, Go…) |
-| `namespace` | string | ✓ | Extension namespace: "uc", "labs", or "product" (see below) |
-| `file_no` | integer | ✓ | Unique file number used for CAST IDs |
-| `version` | string | ✓ | Semantic version (e.g., "1.0.0") |
-| `author` | string | ✓ | Extension author |
-| `extensions` | array | ✓ | File extensions without dot |
-| `tags` | string | ✓ | NuGet package tags |
-| `comment` | string | ✓ | Single-line comment prefix |
-| `multiline_comment` | object | ✓ | Multi-line comment delimiters |
-
-#### Namespace Values
-
-The `namespace` field determines the extension naming convention:
-
-| Value | Extension ID | Use Case |
-|-------|-------------|----------|
-| `uc` | `com.castsoftware.uc.language` | User Community extensions (community-contributed) |
-| `labs` | `com.castsoftware.labs.language` | Labs extensions (experimental/preview) |
-| `product` | `com.castsoftware.language` | Product extensions (official CAST extensions) |
-
-### Choosing Which Objects to Create
-
-Before defining your `objects` configuration, understand what makes an object **useful** in CAST/Imaging.
-
-#### The Two Types of Useful Objects
-
-| Type | Description | Examples | Role in Imaging |
-|------|-------------|----------|-----------------|
-| **Callables** | Code that can be executed/called | Function, Method, Procedure, Constructor | Source AND target of call links |
-| **Containers** | Organize and group callables | Class, Module, Package, Struct | Define hierarchy, appear in navigation tree |
-
-#### What This Generator Creates
-
-The generator creates **callLinks** between objects. A callLink represents "A calls B":
-
-```
-┌─────────────┐     callLink      ┌─────────────┐
-│  Function A │ ────────────────► │  Function B │
-│   (caller)  │                   │   (callee)  │
-└─────────────┘                   └─────────────┘
-```
-
-For an object to participate in call analysis, it must be either:
-- A **caller** (contains code that calls other functions)
-- A **callee** (can be called by other code)
-
-#### Objects You Should Create
-
-✅ **Functions/Methods** - The core callable units of your language
-```json
-"Function": { "parent": "Program", "pattern_keys": ["function"] },
-"Method": { "parent": "Class", "pattern_keys": ["method"] }
-```
-
-✅ **Containers that group callables** - Organize the hierarchy
-```json
-"Class": { "parent": "Program", "pattern_keys": ["class"] },
-"Module": { "parent": "Program", "pattern_keys": ["module"] }
-```
-
-✅ **Constructors** (if your language has them) - They are callable
-```json
-"Constructor": { "parent": "Class", "pattern_keys": ["constructor"] }
-```
-
-#### Objects You Should NOT Create
-
-❌ **Imports/Includes** - Declarations, not executable code
-- The generator doesn't create import/dependency links
-- They add noise without value
-
-❌ **Annotations/Decorators** - Metadata, not callable
-- Better represented as properties on the annotated object
-- Cannot be source or target of calls
-
-❌ **Fields/Attributes** - Data, not callable
-- Unless your language allows field access as function calls
-- Consider if they provide architectural value
-
-❌ **Local Variables/Parameters** - Too granular
-- Scope too limited, no cross-file relevance
-- Would bloat the model without insights
-
-❌ **Type definitions** (Enum, Typedef, Interface without methods)
-- These define types but don't contain executable code
-- Exception: Interface with default method implementations
-
-#### Decision Flowchart
-
-```
-Is this code element...
-    │
-    ├─► Callable (can be invoked)? ──────────────► ✅ CREATE IT
-    │
-    ├─► A container for callables? ──────────────► ✅ CREATE IT (for hierarchy)
-    │
-    ├─► A declaration (import, typedef)? ────────► ❌ SKIP IT
-    │
-    └─► Data-only (field, variable)? ────────────► ❌ SKIP IT (usually)
-```
-
-#### Real-World Examples
-
-| Language | Recommended Objects | Excluded |
-|----------|--------------------| ---------|
-| Java | Package, Class, Interface, Method, Constructor | Import, Field, Annotation, Enum |
-| Python | Module, Class, Function, Method | Import, Decorator, Variable |
-| Go | Struct, Interface, Function, Method | Import, Type alias, Const |
-| COBOL | Program, Section, Paragraph | Data Division items |
-| Rust | Struct, Impl, Function, Method | Enum, Trait, Use statement |
+| Field | Type | Description |
+|-------|------|-------------|
+| `language` | string | Language name (e.g., "Python", "Go") |
+| `namespace` | string | "uc", "labs", or "product" |
+| `file_no` | integer | Unique ID range (reserve at CAST UA Corner) |
+| `version` | string | Semantic version (e.g., "1.0.0") |
+| `extensions` | array | File extensions without dot |
+| `objects` | object | Object type hierarchy |
+| `grammar.patterns` | object | Regex patterns for object detection |
 
 ### Objects Configuration
-
-The `objects` section defines the **hierarchy of code elements** your extension will detect.
 
 ```json
 "objects": {
@@ -320,842 +338,478 @@ The `objects` section defines the **hierarchy of code elements** your extension 
 }
 ```
 
-**Key concepts:**
-
-- **`parent`**: Where this object type can exist
-  - `"file"` = directly under the source file (top-level container)
-  - Another object type name = nested inside that type
-
-- **`pattern_keys`**: Which grammar patterns detect this object type
-  - Empty array `[]` for auto-created objects (like `Program`)
+- **`parent`**: Where this object type lives in hierarchy
+  - `"file"` = Top-level container (Program)
+  - Object type name = Nested inside that type
+  
+- **`pattern_keys`**: Which patterns detect this type
+  - Empty `[]` for auto-created objects (Program)
   - References pattern names from `grammar.patterns`
 
-**Example hierarchy:**
-
-```
-File
-└── Program (auto-created container)
-    ├── Class (detected by "class" pattern)
-    │   └── Method (detected by "method" pattern)
-    └── Function (detected by "function" pattern)
-```
-
-### Grammar Configuration
-
-The `grammar` section defines **how to parse** the source code.
-
-#### `block_delimiters`
-
-How code blocks are delimited. This affects how the parser determines where functions/classes end.
-
-| Value | Description | Languages |
-|-------|-------------|-----------|
-| `braces` | Blocks use `{` and `}` | Go, Java, Rust, C, JS |
-| `end_keyword` | Blocks end with "end" or "function...end" | Ruby, Lua, Elixir |
-| `indentation` | Blocks defined by indentation | Python, YAML |
-| `sequential` | No nested blocks, sequential processing | COBOL, Assembly |
-
-#### `patterns`
-
-Regex patterns to detect code structures. Each pattern **must** have a named capture group `(?P<name>...)` to extract the object's name.
+### Grammar Patterns
 
 ```json
-"patterns": {
-  "class": ["^\\s*class\\s+(?P<name>\\w+)"],
-  "function": ["^\\s*def\\s+(?P<name>\\w+)\\s*\\("],
-  "method": ["^\\s+def\\s+(?P<name>\\w+)\\s*\\("]
+"grammar": {
+  "block_delimiters": "braces",
+  "patterns": {
+    "class": ["^\\s*class\\s+(?P<name>\\w+)"],
+    "function": ["^\\s*func\\s+(?P<name>\\w+)"]
+  },
+  "keywords": ["if", "else", "for", "while"]
 }
 ```
 
-**Tips:**
+- **`block_delimiters`**: How code blocks end
+  - `"braces"` - `{...}` (Go, Java, C)
+  - `"end_keyword"` - `end` keyword (Ruby, Lua)
+  - `"indentation"` - Whitespace (Python)
 
-- Use `^\\s*` to match from line start with optional leading whitespace
-- Use `^\\s+` (with `+`) to require indentation (for nested elements)
-- Multiple patterns per type are supported (array of strings)
-- Patterns are tested in order; first match wins
+- **`patterns`**: Regex with `(?P<name>...)` capture group
 
-**Special capture group - `receiver`:**
+- **`keywords`**: Reserved words (helper for manual link implementation)
 
-For languages like Go where methods have receivers, you can capture the receiver type:
+---
 
-```json
-"method": ["^\\s*func\\s+\\(\\w+\\s+\\*?(?P<receiver>\\w+)\\)\\s+(?P<name>\\w+)"]
+## Implementing Link Detection (Pass 2)
+
+### Step 1: Understand the Data Structures
+
+After Pass 1 completes, you have access to:
+
+```python
+# In the module class:
+self.objects           # {fullname: CustomObject} - All objects in this file
+self.object_lines      # {fullname: (start, end)} - Line ranges
+self.source_content    # Raw source code string
+self.path              # File path
+
+# In the library (passed to resolve()):
+library.symbols        # {fullname: CustomObject} - ALL objects across ALL files
+library.symbols_by_name # {short_name: [fullnames]} - For resolution
 ```
 
-This pattern matches `func (s *Server) Start()` and extracts:
+### Step 2: Implement full_parse()
 
-- `receiver` = "Server"
-- `name` = "Start"
+Detect calls in the source code:
 
-#### `call_pattern`
-
-Regex pattern to detect function/method calls. Group 1 (or named group `callee`) captures the called function name.
-
-```json
-"call_pattern": "\\b(\\w+)\\s*\\("
+```python
+def full_parse(self):
+    if not self.source_content:
+        return
+    
+    lines = self.source_content.splitlines()
+    for line_num, line in enumerate(lines, 1):
+        # Your technology-specific call detection
+        # Example: Match "functionName(" pattern
+        for match in re.finditer(r'\b(\w+)\s*\(', line):
+            callee_name = match.group(1)
+            
+            # Skip language keywords
+            if callee_name in self._get_keywords():
+                continue
+            
+            # Find caller (which function contains this line)
+            caller = self._find_caller_for_line(line_num)
+            
+            # Store for resolution
+            self.pending_links.append({
+                'caller': caller,
+                'callee': callee_name,
+                'line': line_num
+            })
 ```
 
-This matches `functionName(` and captures `functionName`.
+### Step 3: Implement resolve()
 
-#### `keywords`
+Match callee names to actual objects:
 
-Language keywords to **exclude** from call detection. Without this, control structures like `if(condition)` would be detected as function calls.
+```python
+def resolve(self, library):
+    for link_info in self.pending_links:
+        callee_name = link_info['callee']
+        
+        # Strategy 1: Same-file resolution (highest confidence)
+        for fullname, obj in self.objects.items():
+            if fullname.endswith('.' + callee_name):
+                link_info['resolved_callee'] = obj
+                link_info['resolved_callee_fullname'] = fullname
+                break
+        
+        # Strategy 2: Cross-file resolution (only if unambiguous)
+        if 'resolved_callee' not in link_info:
+            candidates = library.symbols_by_name.get(callee_name, [])
+            if len(candidates) == 1:
+                fullname = candidates[0]
+                link_info['resolved_callee'] = library.symbols[fullname]
+                link_info['resolved_callee_fullname'] = fullname
+```
 
-```json
-"keywords": ["if", "else", "for", "while", "return", "class", "def"]
+### Step 4: Implement save_links()
+
+Create links using the CAST SDK:
+
+```python
+def save_links(self):
+    from cast.analysers import create_link, Bookmark
+    
+    links_created = 0
+    for link_info in self.pending_links:
+        if 'resolved_callee' not in link_info:
+            continue
+        
+        caller_obj = self.objects.get(link_info['caller'])
+        callee_obj = link_info['resolved_callee']
+        line = link_info.get('line', 0)
+        
+        if caller_obj and callee_obj:
+            # Create bookmark for navigation
+            bookmark = Bookmark(self.file, line, 1, line, -1)
+            
+            # Create the link
+            create_link('callLink', caller_obj, callee_obj, bookmark)
+            links_created += 1
+    
+    return links_created
 ```
 
 ---
 
-## Quality of Grammar Inputs
+## Implementing Cross-Technology Links (Application Level)
 
-> ⚠️ **The quality of analysis results directly depends on the quality of your grammar configuration.**
+### When to Use Application Level
 
-The generator produces a **generic parser** that relies entirely on regex patterns. Unlike dedicated language parsers with full AST support, this approach has inherent limitations. Understanding these limitations helps you write better configurations.
+Use Application Level when you need to link your technology's objects to objects from **other technologies**:
 
-### The Importance of Well-Designed Patterns
+| Scenario | Example |
+|----------|---------|
+| **Database access** | Your language → SQL Table |
+| **API calls** | Your language → Java/C# REST endpoint |
+| **Message queues** | Your language → Queue/Topic |
+| **Configuration** | Your language → XML/JSON config |
+| **External services** | Your language → Web service |
 
-#### Object Detection Patterns
+### Step 1: Implement end_application()
 
-Your `patterns` configuration determines what the analyzer can "see" in source code. Poor patterns lead to:
+Open the generated `*_application_level.py` file and implement the matching logic:
 
-| Problem | Consequence |
-|---------|-------------|
-| Too broad patterns | False positives (detecting non-objects) |
-| Too narrow patterns | Missed objects (low detection rate) |
-| Missing capture groups | Objects created without names |
-| Incorrect anchoring | Duplicate or misplaced objects |
-
-**Best Practices:**
-
-1. **Always anchor patterns** with `^` when matching line starts
-2. **Use named capture groups** `(?P<name>...)` for clarity
-3. **Test patterns extensively** on real code samples before deployment
-4. **Order patterns from most specific to least specific**
-
-```json
-// Good: Specific, anchored, with named group
-"function": ["^\\s*function\\s+(?P<name>\\w+)\\s*\\("]
-
-// Bad: Too broad, will match comments and strings
-"function": ["function (\\w+)"]
+```python
+def end_application(self, application):
+    """
+    Create cross-technology links after all analyzers complete.
+    """
+    from cast.application import create_link
+    
+    # Find your technology's objects
+    my_functions = list(
+        application.search_objects(category='MyLangFunction')
+    )
+    
+    # Find objects from other technologies
+    db_tables = list(application.search_objects(category='Table'))
+    java_methods = list(application.search_objects(category='JV_Method'))
+    
+    # Implement matching logic with MULTIPLE conditions
+    links_created = 0
+    
+    for func in my_functions:
+        func_name = func.get_name().lower()
+        
+        # Example: Link to database tables
+        for table in db_tables:
+            table_name = table.get_name().lower()
+            
+            # Use multiple conditions to avoid false positives!
+            if (table_name in func_name and 
+                len(table_name) > 3 and  # Avoid short names
+                func_name.startswith(('get_', 'query_', 'fetch_'))):
+                
+                create_link('useLink', func, table)
+                links_created += 1
+    
+    if links_created > 0:
+        print(f"[MyLang] Created {links_created} cross-technology links")
 ```
 
-#### Call Pattern Quality
+### Step 2: Best Practices
 
-The `call_pattern` is critical for link detection. A poorly designed call pattern will either:
-- Miss real function calls → Low link count
-- Match non-calls (keywords, comments) → False positive links
+#### ✅ DO:
 
-**Recommended patterns by language family:**
+1. **Use multiple matching conditions**
+   ```python
+   if (name_matches and pattern_matches and context_matches):
+       create_link(...)
+   ```
 
-```json
-// C-style languages (function())
-"call_pattern": "\\b([a-zA-Z_]\\w*)\\s*\\("
+2. **Validate name length**
+   ```python
+   if table_name in func_name and len(table_name) > 3:
+       # Avoids matching "id", "db", etc.
+   ```
 
-// Method chains (obj.method())
-"call_pattern": "(?:\\.|:)([a-zA-Z_]\\w*)\\s*\\(|\\b([a-zA-Z_]\\w*)\\s*\\("
+3. **Parse source code for evidence**
+   ```python
+   from cast.application import open_source_file
+   source = open_source_file(func.get_file()).read()
+   if 'SELECT * FROM ' + table_name in source:
+       create_link('useLink', func, table)
+   ```
 
-// Lua (obj:method() and obj.method())
-"call_pattern": "(?:\\.|:)([a-zA-Z_]\\w*)\\s*\\(|\\b([a-zA-Z_]\\w*)\\s*\\("
+#### ❌ DON'T:
+
+1. **Don't match on short names alone**
+2. **Don't create links without evidence**
+3. **Don't forget error handling**
+
+### Available APIs
+
+```python
+# Search for objects
+objects = application.search_objects(category='ObjectType')
+objects = application.search_objects(name='MyObject')
+
+# Iterate all objects
+for obj in application.objects():
+    print(obj.get_name(), obj.get_type())
+
+# Read source files
+from cast.application import open_source_file
+source = open_source_file(file_path)
+content = source.read()
+
+# Create links
+from cast.application import create_link
+create_link('callLink', source_obj, target_obj)
 ```
 
-#### Keywords: The Safety Net
+**Complete API Documentation:**
+📖 [Application Level API Reference](https://cast-projects.github.io/Extension-SDK/doc/code_reference.html#application-level)
 
-The `keywords` list prevents false positive calls. **Missing keywords = garbage links.**
+---
 
-```json
-// Incomplete: "if(" will be detected as a call to "if"
-"keywords": ["return", "class"]
+## CAST SDK Reference
 
-// Complete: All control structures excluded
-"keywords": ["if", "else", "for", "while", "return", "class", "def",
-             "function", "end", "do", "then", "local", "not", "and", "or"]
+### create_link()
+
+Creates a relationship between two objects in the CAST knowledge base.
+
+```python
+from cast.analysers import create_link, Bookmark
+
+# Basic usage
+create_link('callLink', caller_obj, callee_obj)
+
+# With source location (enables F11 navigation)
+bookmark = Bookmark(file, line, col, end_line, end_col)
+create_link('callLink', caller_obj, callee_obj, bookmark)
 ```
 
-### Block Delimiter Selection
+**Parameters:**
+- `link_type` (str): Predefined link type (see below)
+- `caller` (CustomObject): Source object
+- `callee` (CustomObject): Target object
+- `bookmark` (Bookmark, optional): Source location
 
-Choosing the wrong `block_delimiters` causes the parser to incorrectly determine function boundaries, leading to:
-- Calls attributed to wrong callers
-- Objects with wrong parent relationships
-- Incorrect line number ranges
+### Predefined Link Types
 
-| Language | Correct Setting | Wrong Setting Effect |
-|----------|-----------------|---------------------|
-| Lua | `end_keyword` | With `braces`: functions never "end", calls misattributed |
-| Go | `braces` | With `end_keyword`: parser looks for nonexistent "end" |
-| Python | `indentation` | With `braces`: all code appears as top-level |
-| COBOL | `sequential` | With others: paragraphs not detected properly |
+**IMPORTANT:** You cannot invent new link types. Only these predefined types are available:
 
-### Testing Your Configuration
+| Link Type | Meaning | Use Case |
+|-----------|---------|----------|
+| `callLink` | Function/method invocation | foo() calls bar() |
+| `useLink` | Read/write access | Function uses variable |
+| `relyonLink` | Dependency | Module depends on library |
+| `inheritLink` | Inheritance | Class extends parent |
+| `referLink` | Reference | Code mentions constant |
 
-Before deploying, always:
+Custom link types can be defined in MetaModel XML, but this requires advanced knowledge of the CAST metamodel.
 
-1. **Create test files** with representative code samples
-2. **Run the analyzer** and check the summary output
-3. **Verify object counts** match your expectations
-4. **Check link detection** - are real calls detected?
-5. **Look for false positives** - are non-calls being linked?
+### Bookmark
+
+Enables F11 navigation to source code.
+
+```python
+from cast.analysers import Bookmark
+
+# Bookmark(file, start_line, start_col, end_line, end_col)
+bookmark = Bookmark(self.file, 42, 1, 42, -1)
+# -1 for end_col means "end of line"
+```
+
+### CustomObject
+
+Objects are created in Pass 1, but here's the reference:
+
+```python
+from cast.analysers import CustomObject
+
+obj = CustomObject()
+obj.set_type('MyLangFunction')     # Object type from MetaModel
+obj.set_name('myFunction')          # Short name
+obj.set_fullname('path/file.ml.myFunction')  # Unique identifier
+obj.set_parent(parent_obj)          # Parent in hierarchy
+obj.set_guid(unique_string)         # Deterministic GUID
+obj.save()                          # Persist to knowledge base
+obj.save_position(bookmark)         # Set source location
+```
+
+---
+
+## Using LLMs to Assist Implementation
+
+Large Language Models can significantly accelerate both Pass 2 and Application Level implementation:
+
+### For Pass 2 (Same-Technology Links)
+
+#### 1. Understanding the Language
+
+Ask an LLM to explain the calling conventions of your target language:
+
+> "Explain all the ways functions can be called in Lua, including method calls, 
+> metamethod invocations, and dynamic calls. Provide regex patterns that would 
+> match each calling style."
+
+#### 2. Generating Detection Patterns
+
+> "Write a Python regex pattern that matches Go method calls of the form 
+> `receiver.Method()` where the receiver can be a variable, pointer dereference, 
+> or type assertion."
+
+#### 3. Resolution Strategies
+
+> "In Ruby, how would you resolve a method call `obj.process()` to its 
+> definition, considering: method_missing, included modules, class reopening, 
+> and refinements? Which cases can be resolved statically?"
+
+### For Application Level (Cross-Technology Links)
+
+#### 1. Understanding Cross-Technology Patterns
+
+> "In a typical Java + Python microservices architecture, what are the common 
+> patterns for Python code calling Java REST endpoints? How would you detect 
+> these calls in Python source code?"
+
+#### 2. Database Access Patterns
+
+> "What are the common naming conventions for functions that access database 
+> tables in Python? Generate matching logic that links Python functions to SQL 
+> tables based on these conventions."
+
+#### 3. Configuration Matching
+
+> "How would you match Python code that reads configuration files to actual 
+> XML/JSON configuration objects? What evidence in the source code would 
+> indicate a dependency?"
+
+### Workflow
+
+1. Generate extension scaffold with this tool
+2. Use an LLM to understand the target language's semantics
+3. Implement `full_parse()` with LLM assistance (Pass 2)
+4. Test on real code, iterate with LLM help
+5. Implement `resolve()` for unambiguous cases (Pass 2)
+6. Implement `end_application()` for cross-technology links (Application Level)
+7. Deploy and validate
+
+---
+
+## Deployment
+
+### 1. Build NuGet Package
 
 ```bash
-# Generate extension
-python generate_extension.py config_mylang.json test_output
-
-# Run tests to see the analysis summary
-python -m unittest tests.test_mylang.TestMyLangAnalyzerLevel.test_analyzer_level
+cd outputs/com.castsoftware.uc.mylang
+.\plugin-to-nupkg.bat
 ```
 
-The analysis summary will show you exactly what was detected:
-- Objects by file
-- Intra-file calls (within same file)
-- Inter-file calls (across files)
+### 2. Deploy to CAST
 
----
-
-## How It Works
-
-### 2-Pass Analysis Architecture
-
-CAST analyzers use a 2-pass architecture for robust parsing:
-
-#### Pass 1: Light Parsing (`start_file`)
-
-For each source file:
-
-1. Read the file content
-2. Build a coarse AST (Abstract Syntax Tree) using regex patterns
-3. Create CAST objects for detected structures (classes, functions, etc.)
-4. Store the module in a library for Pass 2
-
-**What gets created:** Objects with names, types, and source locations.
-
-#### Pass 2: Full Parsing (`end_analysis`)
-
-After all files are processed:
-
-1. Re-scan each module for function/method calls
-2. Resolve calls to their target objects using the symbol table
-3. Create links between caller and callee objects
-4. Clean up memory
-
-**What gets created:** Links (call relationships) between objects.
-
-### Symbol Resolution
-
-When a call like `helper()` is detected:
-
-1. **Exact match**: Look for `helper` in the global symbol table
-2. **Same-file match**: Prefer symbols from the same source file
-3. **Short name match**: Look up by the function name alone
-
-This allows resolution across files without requiring import analysis.
-
----
-
-## Link Detection
-
-### What CAN Be Detected
-
-The generic parser can reliably detect:
-
-| Call Type | Example | Detection |
-|-----------|---------|-----------|
-| Direct function calls | `processData()` | ✓ Supported |
-| Qualified calls | `utils.processData()` | ✓ Last segment |
-| Method calls | `obj.save()` | ✓ Last segment |
-| Constructor calls | `new MyClass()` | ✓ Supported |
-
-### What CANNOT Be Detected
-
-Due to the limitations of regex-based parsing without full semantic analysis:
-
-| Call Type | Example | Why It Fails |
-|-----------|---------|--------------|
-| Variable method calls | `x.method()` | Unknown variable type |
-| Dynamic calls | `send(:method)` | Name resolved at runtime |
-| Polymorphic calls | `animal.speak()` | Type ambiguity (Dog/Cat…) |
-| Callback/closure calls | `callback()` | No reference tracking |
-| Import-based resolution | `from x import y` | Needs full import analysis |
-
-### Improving Link Detection
-
-For better detection, you can extend the generated code (see next section).
-
----
-
-## Extending Generated Extensions
-
-The generated extensions are designed to be **extensible**. Here are the key extension points:
-
-### 1. Custom Call Extraction
-
-Override `_extract_calls()` in the module class:
-
-```python
-class MyLangModule(MyLangModule):
-    def _extract_calls(self):
-        # Call parent implementation
-        super()._extract_calls()
-        # Add custom call detection
-        for i, line in enumerate(self.source_content.splitlines(), 1):
-            # Detect special call patterns
-            match = re.search(r'invoke\s*\(\s*["\'](\w+)["\']', line)
-            if match:
-                self.pending_links.append({
-                    'caller': self._get_context_for_line(i),
-                    'callee': match.group(1),
-                    'type': 'dynamic_call',
-                    'line': i
-                })
+Copy the `.nupkg` file to:
+```
+C:\Cast\ProgramData\CAST\AIP-Console-Standalone\data\shared\extensions\
 ```
 
-### 2. Parser Registry
+### 3. Create Analysis Unit
 
-Register custom handlers for specific AST node types:
+Since the extension doesn't include a DMT discoverer:
 
-```python
-from mylang_module import register_custom_handler
+1. Run **Fast Scan** on your application
+2. Start **Deep Analysis**
+3. Go to **Config tab** → **Universal Technology**
+4. Click **+ADD** to create Analysis Unit
+5. Fill in: Name, Package (`main_sources`), Language
+6. Save and continue
 
-def handle_special_block(node, module):
-    """Custom handler for special block types."""
-    # Process the node
-    # Create additional objects or links
-    pass
+### 4. Validate MetaModel (Optional)
 
-register_custom_handler('special_block', handle_special_block)
-```
+Use the UA Package Assistant to validate:
 
-### 3. Custom Symbol Resolution
-
-Override `resolve_symbol()` in the Library class for smarter resolution:
-
-```python
-class MyLangLibrary(MyLangLibrary):
-    def resolve_symbol(self, name, context_module=None):
-        # Try standard resolution first
-        result = super().resolve_symbol(name, context_module)
-        if result:
-            return result
-        # Custom resolution logic
-        # e.g., check import statements, type annotations, etc.
-        return self._resolve_from_imports(name, context_module)
-```
-
-### 4. Application-Level Cross-Technology Links
-
-Use the application level extension for cross-technology analysis:
-
-```python
-class MyLangApplicationExtension(ApplicationLevelExtension):
-    def end_application(self, application):
-        # Find all MyLang functions
-        functions = application.search_objects(category='MyLangFunction')
-        # Find database tables from SQL analyzer
-        tables = application.search_objects(category='Table')
-        # Create cross-technology links based on naming conventions
-        for func in functions:
-            for table in tables:
-                if table.get_name().lower() in func.get_name().lower():
-                    create_link('useLink', func, table)
-```
-
----
-
-## Extending the MetaModel
-
-The generator creates a basic MetaModel with types and categories for your objects. For advanced use cases, you may want to extend the generated MetaModel XML files to add custom **categories**, **properties**, or **link types**.
-
-### When to Extend the MetaModel
-
-Consider extending when you need:
-
-- **Custom properties** on objects (e.g., complexity metrics, security flags)
-- **New link types** beyond `callLink` (e.g., `useLink`, `readLink`, `inheritLink`)
-- **APM categories** for dashboard integration
-- **Quality rule categories** for CAST rules
-
-### MetaModel Files Location
-
-After generation, you'll find these XML files in `configuration/`:
-
-```
-configuration/
-├── Languages/
-│   └── mylang/
-│       └── MyLangLanguagePattern.xml    # Language patterns
-└── SDK/
-    └── MyLangMetaModel.xml              # Types, categories, properties
-```
-
-### Adding Custom Categories
-
-Categories are inherited attributes that group objects. Add them in `MyLangMetaModel.xml`:
-
-```xml
-<!-- Add after existing categories -->
-
-<!-- Category for objects that access databases -->
-<category name="CAST_MyLang_DatabaseAccessor" id="YOUR_UNIQUE_ID">
-    <description>Objects that access database resources</description>
-    <property name="accessedTables" type="stringList" id="YOUR_PROP_ID">
-        <description>List of database tables accessed</description>
-    </property>
-</category>
-
-<!-- Category for security-sensitive objects -->
-<category name="CAST_MyLang_SecuritySensitive" id="YOUR_UNIQUE_ID_2">
-    <description>Objects handling sensitive data</description>
-    <property name="securityLevel" type="integer" id="YOUR_PROP_ID_2">
-        <description>Security level (1=low, 2=medium, 3=high)</description>
-    </property>
-</category>
-```
-
-Then inherit the category in your object types:
-
-```xml
-<type name="CAST_MyLang_Function" id="...">
-    <!-- ... existing attributes ... -->
-    <inheritedCategory name="CAST_MyLang_DatabaseAccessor"/>
-    <inheritedCategory name="CAST_MyLang_SecuritySensitive"/>
-</type>
-```
-
-### Adding Custom Properties
-
-Properties store data on objects. Define them within categories:
-
-```xml
-<category name="CAST_MyLang_Metrics" id="YOUR_UNIQUE_ID">
-    <description>Custom metrics for MyLang objects</description>
-    
-    <!-- Integer property -->
-    <property name="cyclomaticComplexity" type="integer" id="YOUR_PROP_ID">
-        <description>Cyclomatic complexity of the function</description>
-    </property>
-    
-    <!-- String property -->
-    <property name="author" type="string" id="YOUR_PROP_ID_2">
-        <description>Author from code comments</description>
-    </property>
-    
-    <!-- String list property -->
-    <property name="annotations" type="stringList" id="YOUR_PROP_ID_3">
-        <description>List of annotations on this object</description>
-    </property>
-    
-    <!-- Reference to another object -->
-    <property name="overrides" type="reference" id="YOUR_PROP_ID_4">
-        <description>Reference to overridden method</description>
-    </property>
-</category>
-```
-
-### Adding Custom Link Types
-
-Beyond `callLink`, you can create custom link types for specific relationships:
-
-```xml
-<!-- In your MetaModel XML -->
-<link name="CAST_MyLang_InheritLink" id="YOUR_LINK_ID">
-    <description>Inheritance relationship</description>
-    <!-- Link properties if needed -->
-</link>
-
-<link name="CAST_MyLang_UseLink" id="YOUR_LINK_ID_2">
-    <description>Usage relationship (reads/writes)</description>
-    <property name="accessType" type="string" id="YOUR_PROP_ID">
-        <description>read, write, or readwrite</description>
-    </property>
-</link>
-```
-
-Then use them in your code:
-
-```python
-from cast.analysers import create_link
-
-# In your module or application level code
-create_link('CAST_MyLang_InheritLink', child_class, parent_class)
-create_link('CAST_MyLang_UseLink', function, variable)
-```
-
-### Setting Properties in Code
-
-After defining properties, set them in your Python code:
-
-```python
-# In your module class
-def _create_object(self, name, obj_type, line, end_line):
-    obj = super()._create_object(name, obj_type, line, end_line)
-    
-    # Set custom properties
-    obj.set_property('cyclomaticComplexity', self._calculate_complexity())
-    obj.set_property('author', self._extract_author_comment())
-    obj.set_property('annotations', self._get_annotations())
-    
-    return obj
-```
-
-### ID Management
-
-Every category, property, type, and link needs a **unique ID**. Use the same range as your `file_no`:
-
-```
-Your reserved range: 2,193,000 - 2,193,999
-
-Suggested allocation:
-- Types:      2,193,000 - 2,193,099
-- Categories: 2,193,100 - 2,193,499
-- Properties: 2,193,500 - 2,193,799
-- Links:      2,193,800 - 2,193,899
-```
-
-### Integrating with CAST Dashboards (APM)
-
-To make your objects appear in CAST dashboards, inherit APM categories:
-
-```xml
-<type name="CAST_MyLang_Function" id="...">
-    <!-- For transaction tracking -->
-    <inheritedCategory name="APM Methods"/>
-    <inheritedCategory name="APM Client Language Artifacts"/>
-    
-    <!-- For inventory views -->
-    <inheritedCategory name="APM Inventory Methods"/>
-</type>
-
-<type name="CAST_MyLang_Class" id="...">
-    <inheritedCategory name="APM Sources"/>
-    <inheritedCategory name="APM Classes"/>
-</type>
-```
-
-### Validation
-
-After modifying the MetaModel, validate it:
-
-1. Open **UA Package Assistant**:
-   ```
-   C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CAST 8.x\UAPackageAssistant.exe
-   ```
-
-2. Browse to your extension folder
-
-3. Check **"Validate package MetaModel file only"**
-
-4. Click **Validate** and check for errors
-
----
-
-## Custom Parsing Override
-
-When the generic regex-based parser doesn't meet your needs, you can override specific parsing methods. This is useful when:
-
-- **Regex limitations** prevent accurate detection
-- **Language-specific constructs** require custom handling
-- **Configuration quality** issues cause false positives/negatives
-- **Performance optimization** is needed for large codebases
-
-### Architecture Overview
-
-The generated module class has these key methods you can override:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Module Class                             │
-├─────────────────────────────────────────────────────────────┤
-│  OBJECT CREATION                                            │
-│  ├─ _extract_object()      → Creates objects from patterns │
-│  ├─ _register_object()     → Registers object in table     │
-│  └─ _find_block_end()      → Determines object boundaries  │
-├─────────────────────────────────────────────────────────────┤
-│  CALL DETECTION                                             │
-│  ├─ _extract_calls()       → Finds function calls          │
-│  ├─ _build_line_context_map() → Maps lines to callers      │
-│  └─ _get_keywords()        → Returns keywords to exclude   │
-├─────────────────────────────────────────────────────────────┤
-│  LINK RESOLUTION                                            │
-│  ├─ resolve()              → Resolves pending calls        │
-│  └─ save_links()           → Creates CAST links            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Override Examples
-
-#### Example 1: Custom Object Extraction
-
-When regex patterns can't capture complex language constructs:
-
-```python
-# In mylang_module.py (generated file, create a subclass)
-
-import re
-from mylang_module import MyLangModule as BaseModule
-
-class MyLangModuleExtended(BaseModule):
-    """Extended module with custom object extraction."""
-    def _extract_object(self, source, pattern_name, pattern_regex, line_offset=0):
-        """Override to handle special constructs."""
-        # Handle anonymous functions specially
-        if pattern_name == 'anonymous_function':
-            return self._extract_anonymous_functions(source, line_offset)
-        # Handle multi-line declarations
-        if pattern_name == 'class':
-            return self._extract_multiline_class(source, line_offset)
-        # Fall back to default regex-based extraction
-        return super()._extract_object(source, pattern_name, pattern_regex, line_offset)
-
-    def _extract_anonymous_functions(self, source, line_offset):
-        """Custom extraction for anonymous functions."""
-        objects = []
-        # Custom parsing logic here
-        lines = source.splitlines()
-        for i, line in enumerate(lines, 1):
-            if 'lambda' in line or '=>' in line:
-                # Create custom object
-                obj = self._create_custom_object(
-                    name=f'anonymous_{i}',
-                    obj_type='Function',
-                    line=line_offset + i
-                )
-                objects.append(obj)
-        return objects
-```
-
-#### Example 2: Custom Call Detection
-
-When the `call_pattern` regex misses or incorrectly matches calls:
-
-```python
-class MyLangModuleExtended(BaseModule):
-    """Extended module with custom call detection."""
-    def _extract_calls(self):
-        """Override to add custom call detection logic."""
-        # First, run the standard extraction
-        super()._extract_calls()
-        # Then add custom patterns
-        self._detect_dynamic_invocations()
-        self._detect_decorator_calls()
-        self._filter_false_positives()
-
-    def _detect_dynamic_invocations(self):
-        """Detect send/invoke style dynamic calls."""
-        pattern = re.compile(r'\b(?:send|invoke|call)\s*[:\(]\s*[\'"](\w+)[\'"]')
-        line_to_context = self._build_line_context_map()
-        for i, line in enumerate(self.source_content.splitlines(), 1):
-            for match in pattern.finditer(line):
-                self.pending_links.append({
-                    'caller': line_to_context.get(i, self.path),
-                    'callee': match.group(1),
-                    'type': 'dynamic_call',
-                    'line': i
-                })
-
-    def _filter_false_positives(self):
-        """Remove known false positive calls."""
-        # Filter out calls that match certain patterns
-        self.pending_links = [
-            link for link in self.pending_links
-            if not self._is_false_positive(link)
-        ]
-
-    def _is_false_positive(self, link):
-        """Check if a link is a false positive."""
-        callee = link['callee']
-        # Example: filter out common utilities that aren't real calls
-        false_positives = {'print', 'log', 'debug', 'assert'}
-        return callee.lower() in false_positives
-```
-
-#### Example 3: Custom Block End Detection
-
-When `block_delimiters` doesn't match your language:
-
-```python
-class MyLangModuleExtended(BaseModule):
-    """Extended module with custom block detection."""
-    def _find_block_end(self, lines, start_line, start_col=0):
-        """Override for custom block detection.
-        Example: Language uses 'BEGIN...END' blocks.
-        """
-        depth = 1
-        for i in range(start_line, len(lines)):
-            line = lines[i]
-            # Count BEGIN keywords (increase depth)
-            depth += len(re.findall(r'\bBEGIN\b', line, re.IGNORECASE))
-            # Count END keywords (decrease depth)
-            ends = len(re.findall(r'\bEND\b', line, re.IGNORECASE))
-            depth -= ends
-            if depth <= 0:
-                return i + 1  # Return 1-based line number
-        # If no END found, return last line
-        return len(lines)
-```
-
-#### Example 4: Enhanced Symbol Resolution
-
-When cross-file references need special handling:
-
-```python
-from mylang_module import MyLangLibrary as BaseLibrary
-
-class MyLangLibraryExtended(BaseLibrary):
-    """Extended library with import-aware resolution."""
-    def __init__(self):
-        super().__init__()
-        self.import_map = {}  # module -> {alias: fullname}
-
-    def resolve_symbol(self, name, context_module=None):
-        """Override to check imports before global lookup."""
-        # First, check if this is an imported symbol
-        if context_module:
-            imports = self.import_map.get(context_module.path, {})
-            if name in imports:
-                imported_fullname = imports[name]
-                obj = self.objects.get(imported_fullname)
-                if obj:
-                    return (obj, imported_fullname)
-        # Fall back to standard resolution
-        return super().resolve_symbol(name, context_module)
-
-    def register_import(self, module_path, alias, fullname):
-        """Register an import for later resolution."""
-        if module_path not in self.import_map:
-            self.import_map[module_path] = {}
-        self.import_map[module_path][alias] = fullname
-```
-
-### Integration Pattern
-
-To use your custom classes, create a separate file and import it:
-
-```python
-# custom_mylang_module.py
-
-from mylang_module import MyLangModule, MyLangLibrary
-from mylang_analyser_level import MyLangAnalyserLevel
-
-class MyLangModuleExtended(MyLangModule):
-    # Your overrides here
-    pass
-
-class MyLangLibraryExtended(MyLangLibrary):
-    # Your overrides here
-    pass
-
-# Monkey-patch the analyser to use extended classes
-original_create_module = MyLangAnalyserLevel._create_module
-
-def patched_create_module(self, file):
-    module = MyLangModuleExtended()
-    module.set_file(file)
-    return module
-
-MyLangAnalyserLevel._create_module = patched_create_module
-```
-
-### Key Data Structures
-
-When overriding, you'll work with these structures:
-
-```python
-# self.objects - Dictionary of created objects
-# Key: fullname (e.g., "file.lua.ClassName.methodName")
-# Value: CAST CustomObject
-
-# self.pending_links - List of calls to resolve
-# Each entry: {'caller': str, 'callee': str, 'type': str, 'line': int}
-
-# self.object_lines - Line ranges for objects
-# Key: fullname
-# Value: (start_line, end_line)
-
-# self.ast - Parsed AST structure
-# List of: {'type': str, 'name': str, 'fullname': str,
-#           'start_line': int, 'end_line': int, 'children': [...]}
-```
-
----
-
-## Analysis Summary Output
-
-After analysis completes, the extension outputs a formatted summary:
-
-```
-╔══════════════════════════════════════════════════════════════╗
-║              Lua ANALYSIS SUMMARY                            ║
-╚══════════════════════════════════════════════════════════════╝
-
-┌─── OBJECTS CREATED (14 total) ───
-│
-│  utils.lua
-│    └─ log (Function)
-│
-│  user_service.lua
-│    └─ UserService:create_user (Function)
-│    └─ UserService:get_user (Function)
-│    └─ new (Function)
-│
-└─── LINKS CREATED (4 total) ───
-
-     Intra-file calls (2):
-        user_service.lua:
-           create_user → new (L12)
-           get_user → new (L18)
-
-     Inter-file calls (2):
-        order_service.lua::run_integrity_check → user_service.lua::get_user (L20)
-        order_service.lua::create_order → models.lua::Order:new (L13)
-
-════════════════════════════════════════════════════════════════
-```
-
-### Understanding the Summary
-
-- **Objects**: Grouped by source file, showing type
-- **Intra-file calls**: Calls within the same file
-- **Inter-file calls**: Calls across different files
-- **Line numbers**: `(L12)` indicates the line where the call occurs
-
-Use this summary to validate your configuration:
-- Low object count? Check your patterns
-- No links? Check your `call_pattern` and `keywords`
-- Wrong grouping? Check `block_delimiters`
+1. Open: `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\CAST 8.x\UAPackageAssistant.exe`
+2. Browse to extension folder
+3. Check "Validate package MetaModel file only"
+4. Click "Validate"
 
 ---
 
 ## Limitations
 
-### Regex-Based Parsing Limitations
+### What Cannot Be Detected Without Semantic Analysis
 
-1. **No semantic analysis**: Can't determine variable types or resolve imports
-2. **No control flow analysis**: Can't trace function references through variables
-3. **Limited context**: Regex patterns match line-by-line with limited lookahead
-4. **No AST manipulation**: Can't transform or refactor code
+| Feature | Why It's Impossible |
+|---------|---------------------|
+| Variable method calls | Unknown variable type |
+| Dynamic invocation | Resolved at runtime |
+| Polymorphic calls | Inheritance ambiguity |
+| Callbacks/closures | No reference tracking |
+| Import-based resolution | Language-specific semantics |
+| Reflection/metaprogramming | Runtime determination |
+| Cross-technology calls without evidence | Requires custom logic per scenario |
+
+### Expected Results
+
+For a well-implemented extension:
+- **Object detection (Pass 1)**: 95%+ accuracy (automatic)
+- **Intra-file calls (Pass 2)**: 70-90% accuracy (with good implementation)
+- **Cross-file calls (Pass 2)**: 30-60% accuracy (depends on resolution strategy)
+- **Cross-technology links (App Level)**: 40-80% accuracy (depends on matching conditions)
+- **Variable method calls**: 0% accuracy (cannot be solved generically)
 
 ### When to Build a Custom Analyzer
 
-Consider building a dedicated analyzer (not using this generator) when you need:
-
-- Full type inference
-- Import/dependency resolution
-- Control flow analysis
-- Data flow analysis
-- Complex language features (macros, metaprogramming)
-
-### Practical Expectations
-
-For most languages, expect to detect:
-
-- **80-90%** of direct function/method calls
-- **50-70%** of total call relationships (including those through variables)
-
-The remaining calls require semantic analysis or manual extension.
+Consider building a dedicated analyzer (not using this generator) when:
+- Full type inference is required
+- Import resolution is critical
+- Language has complex metaprogramming features
+- High accuracy on all link types is needed
+- Cross-technology integration requires deep semantic analysis
 
 ---
 
 ## Examples
+
+### Minimal Configuration (Objects Only)
+
+```json
+{
+  "language": "Simple",
+  "namespace": "uc",
+  "file_no": 99,
+  "version": "1.0.0",
+  "author": "Developer",
+  "extensions": ["sim"],
+  "tags": "Simple Extension",
+  "comment": "#",
+  "objects": {
+    "Program": { "parent": "file", "pattern_keys": [] },
+    "Function": { "parent": "Program", "pattern_keys": ["function"] }
+  },
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "function": ["^\\s*fn\\s+(?P<name>\\w+)"]
+    }
+  }
+}
+```
 
 ### Go Configuration
 
@@ -1165,12 +819,15 @@ The remaining calls require semantic analysis or manual extension.
   "namespace": "uc",
   "file_no": 32,
   "version": "1.0.0",
+  "author": "CAST",
   "extensions": ["go"],
+  "tags": "Go Extension",
   "comment": "//",
   "multiline_comment": { "begin": "/*", "end": "*/" },
   "objects": {
     "Program": { "parent": "file", "pattern_keys": [] },
     "Struct": { "parent": "Program", "pattern_keys": ["struct"] },
+    "Interface": { "parent": "Program", "pattern_keys": ["interface"] },
     "Function": { "parent": "Program", "pattern_keys": ["function"] },
     "Method": { "parent": "Struct", "pattern_keys": ["method"] }
   },
@@ -1178,43 +835,17 @@ The remaining calls require semantic analysis or manual extension.
     "block_delimiters": "braces",
     "patterns": {
       "struct": ["^\\s*type\\s+(?P<name>\\w+)\\s+struct\\s*\\{"],
+      "interface": ["^\\s*type\\s+(?P<name>\\w+)\\s+interface\\s*\\{"],
       "function": ["^\\s*func\\s+(?!\\()(?P<name>\\w+)\\s*\\("],
       "method": ["^\\s*func\\s+\\(\\w+\\s+\\*?(?P<receiver>\\w+)\\)\\s+(?P<name>\\w+)\\s*\\("]
     },
-    "call_pattern": "\\b(\\w+)\\s*\\(",
-    "keywords": ["if", "else", "for", "switch", "return", "func", "type", "struct"]
+    "keywords": ["if", "else", "for", "switch", "select", "case", "return", "go", "defer", "func", "type", "struct", "interface", "package", "import", "var", "const"]
   }
 }
 ```
 
-### Ruby Configuration
+---
 
-```json
-{
-  "language": "Ruby",
-  "namespace": "uc",
-  "file_no": 31,
-  "version": "1.0.0",
-  "extensions": ["rb", "rake"],
-  "comment": "#",
-  "multiline_comment": { "begin": "=begin", "end": "=end" },
-  "objects": {
-    "Program": { "parent": "file", "pattern_keys": [] },
-    "Class": { "parent": "Program", "pattern_keys": ["class"] },
-    "Module": { "parent": "Program", "pattern_keys": ["module"] },
-    "Method": { "parent": "Class", "pattern_keys": ["instance_method"] },
-    "ClassMethod": { "parent": "Module", "pattern_keys": ["class_method"] }
-  },
-  "grammar": {
-    "block_delimiters": "end_keyword",
-    "patterns": {
-      "class": ["^\\s*class\\s+(?P<name>[A-Z]\\w*)"],
-      "module": ["^\\s*module\\s+(?P<name>[A-Z]\\w*)"],
-      "instance_method": ["^\\s+def\\s+(?P<name>[a-z_][\\w?!]*)"],
-      "class_method": ["^\\s+def\\s+self\\.(?P<name>[\\w?!]+)"]
-    },
-    "call_pattern": "\\b(\\w+)[?!]?\\s*[\\(]",
-    "keywords": ["if", "else", "end", "class", "module", "def", "return", "yield"]
-  }
-}
-```
+## License
+
+LGPL - See COPYING.LESSER.txt

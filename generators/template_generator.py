@@ -10,6 +10,7 @@ class TemplateGenerator:
     - Module class (parsing logic)
     - Application level (cross-technology)
     - Test files
+    - Extension README
     """
     
     def __init__(self, config, output_dir):
@@ -147,6 +148,83 @@ class TemplateGenerator:
         self._generate_analyser_level()
         self._generate_application_level()
         self._generate_test()
+        self._generate_extension_readme()  # Generate README for the extension
+    
+    def _generate_extension_readme(self):
+        """Generate the extension's README.md with proper Pass 1/Pass 2 documentation."""
+        # Get first extension
+        extensions = self.config.get('extensions', ['txt'])
+        first_extension = extensions[0]
+        
+        # Format extensions for display
+        extensions_formatted = ', '.join([f'`*.{ext}`' for ext in extensions])
+
+        # List of detected objects with descriptions
+        objects_config = self.config.get('objects', {})
+        objects_lines = []
+        for obj_type, obj_def in objects_config.items():
+            if isinstance(obj_def, dict):
+                parent = obj_def.get('parent', 'file')
+            else:
+                parent = obj_def
+            
+            if parent == 'file':
+                objects_lines.append(f"- **{obj_type}**: Top-level container for all code structures")
+            else:
+                objects_lines.append(f"- **{obj_type}**: {obj_type} definitions inside {parent}")
+        
+        objects_list = '\n'.join(objects_lines) if objects_lines else "- (Default object types)"
+
+        # Multiline comment info
+        multiline_comment_info = ""
+        if self.config.get('multiline_comment'):
+            ml_begin = self.config['multiline_comment'].get('begin', '/*')
+            ml_end = self.config['multiline_comment'].get('end', '*/')
+            multiline_comment_info = f"\n- **Multi-line comments**: `{ml_begin} ... {ml_end}`"
+
+        # Block delimiters description
+        grammar = self.config.get('grammar', {})
+        block_delimiters = grammar.get('block_delimiters', 'braces')
+        block_delim_desc = {
+            'braces': 'Curly braces `{...}`',
+            'end_keyword': 'End keyword (e.g. `end`, `endif`)',
+            'indentation': 'Indentation-based (Python style)',
+            'sequential': 'Sequential blocks (COBOL style)'
+        }.get(block_delimiters, block_delimiters)
+
+        # Namespace handling
+        namespace = self.config.get('namespace', 'uc')
+        namespace_lower = 'uc' if namespace == 'product' else namespace
+
+        # Comment for README
+        comment = self.config.get('comment', '//')
+        
+        # Extended placeholders for README
+        readme_placeholders = {
+            **self.placeholders,
+            '{{VERSION}}': self.config.get('version', '1.0.0'),
+            '{{AUTHOR}}': self.config.get('author', 'CAST'),
+            '{{NAMESPACE}}': namespace,
+            '{{NAMESPACE_LOWER}}': namespace_lower,
+            '{{EXTENSIONS_LIST_FORMATTED}}': extensions_formatted,
+            '{{FIRST_EXTENSION}}': first_extension,
+            '{{OBJECTS_LIST}}': objects_list,
+            '{{MULTILINE_COMMENT_INFO}}': multiline_comment_info,
+            '{{TECHNAME}}': self.techname,
+            '{{BLOCK_DELIMITERS}}': block_delim_desc,
+            '{{COMMENT}}': comment,  # Use raw comment, not escaped version
+        }
+
+        # Load and apply the template
+        template = self._load_template('extension_readme.template')
+        content = template
+        for placeholder, value in readme_placeholders.items():
+            content = content.replace(placeholder, str(value))
+
+        # Write the README
+        output_file = self.output_dir / "README.md"
+        output_file.write_text(content, encoding='utf-8')
+        print(f"[OK] Generated: {output_file}")
     
     def _generate_module(self):
         """Generate the module class file."""

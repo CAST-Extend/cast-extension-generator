@@ -1,0 +1,208 @@
+{
+  "_comment_header": "=== CAST Extension Generator - PHP ===",
+  "_description": "Full PHP support for web applications including OOP, traits, interfaces, namespaces, and modern PHP 7/8 features",
+  
+  "language": "PHP",
+  "namespace": "uc",
+  "file_no": 101,
+  "version": "1.0.5",
+  "author": "CAST",
+  "extensions": ["php", "php3", "php4", "php5", "php7", "php8", "phtml", "phps", "inc"],
+  "tags": "PHP Web Backend Apache Server-side",
+  
+  "comment": "//",
+  "multiline_comment": {
+    "begin": "/*",
+    "end": "*/"
+  },
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Namespace": {
+      "parent": "Program",
+      "pattern_keys": ["namespace_declaration"]
+    },
+    "Class": {
+      "parent": "Program",
+      "pattern_keys": [
+        "class_declaration", 
+        "class_abstract", 
+        "class_final", 
+        "class_extends", 
+        "class_readonly",
+        "anonymous_class"
+      ]
+    },
+    "Interface": {
+      "parent": "Program",
+      "pattern_keys": ["interface_declaration"]
+    },
+    "Trait": {
+      "parent": "Program",
+      "pattern_keys": ["trait_declaration"]
+    },
+    "Enum": {
+      "parent": "Program",
+      "pattern_keys": ["enum_declaration", "enum_backed"]
+    },
+    "Function": {
+      "parent": "Program",
+      "pattern_keys": [
+        "function_declaration", 
+        "arrow_function",
+        "closure_function",
+        "closure_static"
+      ]
+    },
+    "Method": {
+      "parent": "Class",
+      "pattern_keys": [
+        "method_public", 
+        "method_protected", 
+        "method_private", 
+        "method_static", 
+        "method_abstract", 
+        "method_final", 
+        "method_magic", 
+        "method_no_visibility",
+        "constructor_method",
+        "constructor_promoted",
+        "destructor_method"
+      ]
+    },
+    "FileDescriptor": {
+      "parent": "Program",
+      "pattern_keys": []
+    }
+  },
+  
+  "grammar": {
+    "block_delimiters": "braces",
+    "patterns": {
+      "namespace_declaration": [
+        "^\\s*namespace\\s+(?P<n>[A-Za-z_][A-Za-z0-9_\\\\]*)\\s*;",
+        "^\\s*namespace\\s+(?P<n>[A-Za-z_][A-Za-z0-9_\\\\]*)\\s*\\{"
+      ],
+      "class_declaration": [
+        "^\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Za-z_][A-Za-z0-9_,\\s\\\\]*\\s*\\{"
+      ],
+      "class_abstract": [
+        "^\\s*abstract\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*abstract\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+extends\\s+[A-Za-z_][A-Za-z0-9_\\\\]*",
+        "^\\s*abstract\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Za-z_][A-Za-z0-9_,\\s\\\\]*"
+      ],
+      "class_final": [
+        "^\\s*final\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*final\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+extends",
+        "^\\s*final\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements"
+      ],
+      "class_extends": [
+        "^\\s*class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+extends\\s+[A-Za-z_][A-Za-z0-9_\\\\]*",
+        "^\\s*final\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+extends\\s+[A-Za-z_][A-Za-z0-9_\\\\]*",
+        "^\\s*abstract\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+extends\\s+[A-Za-z_][A-Za-z0-9_\\\\]*"
+      ],
+      "class_readonly": [
+        "^\\s*readonly\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*final\\s+readonly\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*readonly\\s+final\\s+class\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "anonymous_class": [
+        "new\\s+class\\s*\\([^)]*\\)\\s*(?:extends\\s+[A-Za-z_][A-Za-z0-9_\\\\]*)?\\s*(?:implements\\s+[A-Za-z_][A-Za-z0-9_,\\s\\\\]*)?\\s*\\{"
+      ],
+      "interface_declaration": [
+        "^\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*interface\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+extends\\s+[A-Za-z_][A-Za-z0-9_,\\s\\\\]*\\s*\\{"
+      ],
+      "trait_declaration": [
+        "^\\s*trait\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{"
+      ],
+      "enum_declaration": [
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*\\{",
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s+implements\\s+[A-Za-z_][A-Za-z0-9_,\\s\\\\]*\\s*\\{"
+      ],
+      "enum_backed": [
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*(?:string|int)\\s*\\{",
+        "^\\s*enum\\s+(?P<n>[A-Z][A-Za-z0-9_]*)\\s*:\\s*(?:string|int)\\s+implements"
+      ],
+      "function_declaration": [
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*function\\s+&\\s*(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "arrow_function": [
+        "^\\s*\\$(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*fn\\s*\\([^)]*\\)\\s*=>",
+        "\\$(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*fn\\s*\\([^)]*\\)\\s*=>"
+      ],
+      "closure_function": [
+        "^\\s*\\$(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*function\\s*\\([^)]*\\)",
+        "\\$(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*function\\s*\\([^)]*\\)"
+      ],
+      "closure_static": [
+        "^\\s*\\$(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*static\\s+function\\s*\\([^)]*\\)",
+        "\\$(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*=\\s*static\\s+function\\s*\\([^)]*\\)"
+      ],
+      "method_public": [
+        "^\\s*public\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*public\\s+function\\s+&\\s*(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_protected": [
+        "^\\s*protected\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*protected\\s+function\\s+&\\s*(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_private": [
+        "^\\s*private\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*private\\s+function\\s+&\\s*(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_static": [
+        "^\\s*public\\s+static\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*protected\\s+static\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*private\\s+static\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*static\\s+public\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*static\\s+protected\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*static\\s+private\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*static\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_abstract": [
+        "^\\s*abstract\\s+public\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*abstract\\s+protected\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*public\\s+abstract\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*protected\\s+abstract\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_final": [
+        "^\\s*final\\s+public\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*final\\s+protected\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*final\\s+private\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*public\\s+final\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*protected\\s+final\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*private\\s+final\\s+function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_magic": [
+        "^\\s*public\\s+function\\s+(?P<n>__[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*protected\\s+function\\s+(?P<n>__[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*private\\s+function\\s+(?P<n>__[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*function\\s+(?P<n>__[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "method_no_visibility": [
+        "^\\s*function\\s+(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\(",
+        "^\\s*function\\s+&\\s*(?P<n>[a-zA-Z_][A-Za-z0-9_]*)\\s*\\("
+      ],
+      "constructor_method": [
+        "^\\s*public\\s+function\\s+(?P<n>__construct)\\s*\\(",
+        "^\\s*protected\\s+function\\s+(?P<n>__construct)\\s*\\(",
+        "^\\s*private\\s+function\\s+(?P<n>__construct)\\s*\\(",
+        "^\\s*function\\s+(?P<n>__construct)\\s*\\("
+      ],
+      "constructor_promoted": [
+        "^\\s*public\\s+function\\s+__construct\\s*\\([^)]*(?:public|protected|private)\\s+[^)]*\\)",
+        "^\\s*function\\s+__construct\\s*\\([^)]*(?:public|protected|private)\\s+[^)]*\\)"
+      ],
+      "destructor_method": [
+        "^\\s*public\\s+function\\s+(?P<n>__destruct)\\s*\\(",
+        "^\\s*function\\s+(?P<n>__destruct)\\s*\\("
+      ]
+    }
+  }
+}

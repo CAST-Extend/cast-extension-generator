@@ -73,7 +73,7 @@
     "grammar": {
       "type": "object",
       "description": "Language-specific grammar patterns for parsing",
-      "required": ["patterns", "call_pattern", "keywords"],
+      "required": ["patterns"],
       "properties": {
         "block_delimiters": {
           "type": "string",
@@ -89,15 +89,6 @@
             "items": { "type": "string" },
             "description": "Array of regex patterns (multiple patterns can match the same object type)"
           }
-        },
-        "call_pattern": {
-          "type": "string",
-          "description": "Regex pattern to detect function/method calls. Group 1 must capture the callee name."
-        },
-        "keywords": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Language keywords to exclude from call detection (control flow, declarations, etc.)"
         }
       }
     }

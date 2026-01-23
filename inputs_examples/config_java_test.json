@@ -1,0 +1,75 @@
+{
+  "_comment_header": "=== CAST Extension Generator - JavaTest ===",
+  "_description": "Java test language support for testing Java syntax patterns",
+  
+  "language": "JavaTest",
+  "namespace": "uc",
+  "file_no": 105,
+  "version": "1.0.5",
+  "author": "CAST",
+  "extensions": ["java"],
+  "tags": "Java Test Testing",
+  
+  "comment": "//",
+  "multiline_comment": {
+    "begin": "/*",
+    "end": "*/"
+  },
+  
+  "objects": {
+    "Program": {
+      "parent": "file",
+      "pattern_keys": []
+    },
+    "Package": {
+      "parent": "Program",
+      "pattern_keys": ["package_declaration"]
+    },
+    "Class": {
+      "parent": "Program",
+      "pattern_keys": ["class_declaration"]
+    },
+    "Interface": {
+      "parent": "Program",
+      "pattern_keys": ["interface_declaration"]
+    },
+    "Method": {
+      "parent": "Class",
+      "pattern_keys": ["method_declaration"]
+    },
+    "Field": {
+      "parent": "Class",
+      "pattern_keys": ["field_declaration"]
+    }
+  },
+  
+  "patterns": {
+    "package_declaration": {
+      "pattern": "^package\\s+([\\w\\.]+)\\s*;",
+      "groups": ["name"]
+    },
+    "class_declaration": {
+      "pattern": "^(?:public|private|protected|abstract|final)?\\s*(?:class|interface)\\s+(\\w+)",
+      "groups": ["name"]
+    },
+    "interface_declaration": {
+      "pattern": "^(?:public|private|protected)?\\s*interface\\s+(\\w+)",
+      "groups": ["name"]
+    },
+    "method_declaration": {
+      "pattern": "^(?:public|private|protected|abstract|final|static|synchronized)?\\s*(?:\\w+\\s+)+(\\w+)\\s*\\(",
+      "groups": ["name"]
+    },
+    "field_declaration": {
+      "pattern": "^(?:public|private|protected|static|final)?\\s*(?:\\w+\\s+)+(\\w+)\\s*;",
+      "groups": ["name"]
+    }
+  },
+  
+  "block_delimiters": {
+    "braces": {
+      "begin": "{",
+      "end": "}"
+    }
+  }
+}
