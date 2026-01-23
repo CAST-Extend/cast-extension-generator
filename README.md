@@ -15,7 +15,6 @@ A tool to generate CAST Universal Analyzer extension **scaffolds** for any progr
 - [CAST SDK Reference](#cast-sdk-reference)
 - [Using LLMs to Assist Implementation](#using-llms-to-assist-implementation)
 - [Deployment](#deployment)
-- [Limitations](#limitations)
 
 ---
 
@@ -747,40 +746,6 @@ Use the UA Package Assistant to validate:
 2. Browse to extension folder
 3. Check "Validate package MetaModel file only"
 4. Click "Validate"
-
----
-
-## Limitations
-
-### What Cannot Be Detected Without Semantic Analysis
-
-| Feature | Why It's Impossible |
-|---------|---------------------|
-| Variable method calls | Unknown variable type |
-| Dynamic invocation | Resolved at runtime |
-| Polymorphic calls | Inheritance ambiguity |
-| Callbacks/closures | No reference tracking |
-| Import-based resolution | Language-specific semantics |
-| Reflection/metaprogramming | Runtime determination |
-| Cross-technology calls without evidence | Requires custom logic per scenario |
-
-### Expected Results
-
-For a well-implemented extension:
-- **Object detection (Pass 1)**: 95%+ accuracy (automatic)
-- **Intra-file calls (Pass 2)**: 70-90% accuracy (with good implementation)
-- **Cross-file calls (Pass 2)**: 30-60% accuracy (depends on resolution strategy)
-- **Cross-technology links (App Level)**: 40-80% accuracy (depends on matching conditions)
-- **Variable method calls**: 0% accuracy (cannot be solved generically)
-
-### When to Build a Custom Analyzer
-
-Consider building a dedicated analyzer (not using this generator) when:
-- Full type inference is required
-- Import resolution is critical
-- Language has complex metaprogramming features
-- High accuracy on all link types is needed
-- Cross-technology integration requires deep semantic analysis
 
 ---
 
