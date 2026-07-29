@@ -33,8 +33,6 @@
             "method": ["^\\s*(?:public|protected|private)?\\s*(?:static\\s+|final\\s+|abstract\\s+|synchronized\\s+|native\\s+)*[A-Za-z_$][\\w$\\<\\>\\[\\]]*\\s+(?P<name>[A-Za-z_]\\w*)\\s*\\("],
             "constructor": ["^\\s*(?:public|protected|private)?\\s*(?P<name>[A-Z][A-Za-z0-9_]*)\\s*\\("]
           },
-          "call_pattern": "\\b([A-Za-z_][\\w]*)\\s*\\(",
-          "keywords": ["if", "else", "for", "while", "switch", "case", "default", "try", "catch", "finally", "return", "throw", "new", "class", "interface", "enum", "extends", "implements", "package", "import", "this", "super", "synchronized", "native", "public", "private", "protected", "static"]
         }
       }
     },
@@ -70,8 +68,6 @@
             "function": ["^\\s*func\\s+(?!\\()(?P<name>\\w+)\\s*\\("],
             "method": ["^\\s*func\\s+\\(\\w+\\s+\\*?(?P<receiver>\\w+)\\)\\s+(?P<name>\\w+)\\s*\\("]
           },
-          "call_pattern": "\\b(\\w+)\\s*\\(",
-          "keywords": ["if", "else", "for", "range", "switch", "case", "default", "select", "break", "continue", "return", "go", "defer", "func", "type", "struct", "interface", "map", "chan", "package", "import", "var", "const", "nil", "true", "false", "make", "new", "append", "len", "cap", "copy", "delete", "panic", "recover"]
         }
       }
     },
@@ -108,8 +104,6 @@
             "pub_function": ["^\\s*pub\\s+fn\\s+(?P<name>\\w+)\\s*[<(]"],
             "impl_method": ["^\\s+(?:pub\\s+)?fn\\s+(?P<name>\\w+)\\s*[<(]"]
           },
-          "call_pattern": "\\b(\\w+)\\s*[!]?\\s*\\(",
-          "keywords": ["if", "else", "match", "loop", "while", "for", "in", "break", "continue", "return", "fn", "let", "mut", "const", "static", "struct", "enum", "trait", "impl", "self", "Self", "super", "use", "mod", "pub", "crate", "extern", "async", "await", "move", "ref", "where", "type", "unsafe", "dyn", "true", "false", "Some", "None", "Ok", "Err"]
         }
       }
     },
@@ -147,8 +141,6 @@
             "class_method": ["^\\s+def\\s+self\\.(?P<name>[\\w?!]+)"],
             "function": ["^def\\s+(?P<name>[a-z_][\\w?!]*)"]
           },
-          "call_pattern": "\\b(\\w+)[?!]?\\s*[\\(]?",
-          "keywords": ["if", "else", "elsif", "end", "unless", "case", "when", "while", "until", "for", "do", "begin", "rescue", "ensure", "raise", "return", "yield", "class", "module", "def", "self", "super", "nil", "true", "false", "and", "or", "not", "in", "require", "include", "extend", "attr_reader", "attr_writer", "attr_accessor", "private", "protected", "public"]
         }
       }
     },
@@ -179,8 +171,6 @@
             "function": ["^\\s*function\\s+(?P<name>[\\w.:]+)\\s*\\("],
             "local_function": ["^\\s*local\\s+function\\s+(?P<name>\\w+)\\s*\\("]
           },
-          "call_pattern": "\\b(\\w+)\\s*\\(",
-          "keywords": ["if", "then", "else", "elseif", "end", "for", "while", "do", "repeat", "until", "return", "local", "function", "nil", "true", "false", "and", "or", "not", "in", "break"]
         }
       }
     },
@@ -225,8 +215,6 @@
             "method_dispatch": ["^\\s*function\\s+(?P<name>[a-z_][A-Za-z0-9_!]*)\\s*\\([^:]+::[A-Z][A-Za-z0-9_{}]*"],
             "macro_def": ["^\\s*macro\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\("]
           },
-          "call_pattern": "\\b([a-z_][A-Za-z0-9_!]*)\\s*\\(",
-          "keywords": ["if", "else", "elseif", "end", "for", "while", "begin", "let", "do", "try", "catch", "finally", "return", "break", "continue", "function", "macro", "module", "struct", "mutable", "abstract", "primitive", "type", "where", "import", "using", "export", "const", "local", "global", "true", "false", "nothing"]
         }
       }
     },
@@ -264,8 +252,6 @@
             "vocabulary": ["^\\s*vocabulary\\s+(?P<name>[^\\s]+)"],
             "struct": ["^\\s*struct\\s+(?P<name>[^\\s]+)"]
           },
-          "call_pattern": "\\b([A-Za-z_][A-Za-z0-9_-]*)\\b",
-          "keywords": [":", ";", "if", "else", "then", "do", "loop", "+loop", "begin", "until", "while", "repeat", "case", "of", "endof", "endcase", "exit", "recurse", "immediate", "create", "does>", "variable", "constant", "value", "defer", "is", "to", "dup", "drop", "swap", "over", "rot", "pick", "roll", "depth", "@", "!", "+", "-", "*", "/", "mod", "and", "or", "xor", "not", "true", "false"]
         }
       }
     },
@@ -305,8 +291,6 @@
             "dunder_method": ["^\\s+fn\\s+(?P<name>__[a-z_]+__)\\s*\\(\\s*(?:inout\\s+)?self"],
             "static_method": ["^\\s+@staticmethod\\s*\\n\\s*fn\\s+(?P<name>[a-z_][A-Za-z0-9_]*)\\s*\\("]
           },
-          "call_pattern": "\\b([a-z_][A-Za-z0-9_]*)\\s*\\(",
-          "keywords": ["if", "else", "elif", "for", "while", "with", "try", "except", "finally", "raise", "return", "pass", "break", "continue", "fn", "def", "struct", "trait", "alias", "var", "let", "inout", "owned", "borrowed", "self", "True", "False", "None", "and", "or", "not", "in", "is", "import", "from", "as"]
         }
       }
     },
@@ -341,8 +325,6 @@
             "section": ["^\\s*(?P<name>[A-Za-z0-9-]+)\\s+SECTION\\."],
             "paragraph": ["^\\s{7,}(?P<name>[A-Za-z][A-Za-z0-9-]*)\\.$"]
           },
-          "call_pattern": "(?:\\bPERFORM\\s+(?P<callee1>[A-Za-z0-9-]+)|\\bCALL\\s+['\"](?P<callee2>[A-Za-z0-9-]+)['\"])",
-          "keywords": ["MOVE", "COMPUTE", "ADD", "SUBTRACT", "MULTIPLY", "DIVIDE", "IF", "ELSE", "END-IF", "DISPLAY", "PERFORM", "CALL", "EVALUATE", "WHEN", "STOP", "EXIT", "GO", "TO", "THRU", "IDENTIFICATION", "ENVIRONMENT", "DATA", "PROCEDURE", "DIVISION", "SECTION"]
         }
       }
     },
@@ -374,8 +356,6 @@
             "label_function": ["^(?P<name>[A-Za-z_]\\w*):\\s*(?:#.*)?$"],
             "data_label": ["^\\s+(?P<name>[A-Za-z_]\\w*):\\s*\\."]
           },
-          "call_pattern": "\\b(?:jal|j)\\s+(?P<callee>[A-Za-z_]\\w+)",
-          "keywords": ["add", "addi", "sub", "subi", "mul", "div", "and", "or", "xor", "nor", "sll", "srl", "sra", "lw", "sw", "lb", "sb", "lui", "beq", "bne", "bgt", "blt", "bgez", "bltz", "j", "jr", "jal", "jalr", "move", "li", "la", "nop", "syscall", "break", "data", "text", "globl", "word", "byte", "ascii", "asciiz", "space"]
         }
       }
     },
@@ -407,8 +387,6 @@
             "routine_label": ["^(?P<name>[A-Za-z_][A-Za-z0-9_]*):\\s*$"],
             "simple_label": ["^(?P<name>[A-Za-z_][A-Za-z0-9_]*):\\s*(?:procedure|/\\*)"]
           },
-          "call_pattern": "(?:\\bcall\\s+(?P<callee1>[A-Za-z_][A-Za-z0-9_]*)|(?P<callee2>[A-Za-z_][A-Za-z0-9_]*)\\s*\\()",
-          "keywords": ["call", "do", "end", "if", "then", "else", "select", "when", "otherwise", "exit", "return", "say", "parse", "pull", "push", "queue", "arg", "var", "value", "with", "signal", "procedure", "expose", "iterate", "leave", "nop", "drop"]
         }
       }
     },
@@ -443,8 +421,6 @@
             "method": ["^\\s+\\[\\w+\\]\\s*(?P<name>\\w+)\\s*\\("],
             "class_function": ["^\\s+hidden\\s+\\[\\w+\\]\\s*(?P<name>\\w+)\\s*\\("]
           },
-          "call_pattern": "\\b([\\w-]+)\\s*\\(",
-          "keywords": ["if", "else", "elseif", "for", "foreach", "while", "switch", "try", "catch", "finally", "return", "throw", "param", "begin", "process", "end", "function", "class", "enum"]
         }
       }
     }

@@ -258,7 +258,6 @@ The generated `*_application_level.py` file contains an **empty template** with 
       "function": ["^\\s*func\\s+(?P<name>\\w+)\\s*\\("],
       "method": ["^\\s+func\\s+(?P<name>\\w+)\\s*\\("]
     },
-    "keywords": ["if", "else", "for", "while", "return"]
   }
 }
 ```
@@ -362,10 +361,11 @@ Open `mylang_application_level.py` and implement:
   - `"braces"` - `{...}` (Go, Java, C)
   - `"end_keyword"` - `end` keyword (Ruby, Lua)
   - `"indentation"` - Whitespace (Python)
+  - `"sequential"` - Block ends when the next one starts (COBOL, Assembly, REXX)
 
 - **`patterns`**: Regex with `(?P<name>...)` capture group
 
-- **`keywords`**: Reserved words (helper for manual link implementation)
+- **`keywords`**: Reserved words — optional, not injected into generated code. Can be included in the config as documentation for the developer implementing Pass 2.
 
 ---
 
@@ -804,7 +804,6 @@ Use the UA Package Assistant to validate:
       "function": ["^\\s*func\\s+(?!\\()(?P<name>\\w+)\\s*\\("],
       "method": ["^\\s*func\\s+\\(\\w+\\s+\\*?(?P<receiver>\\w+)\\)\\s+(?P<name>\\w+)\\s*\\("]
     },
-    "keywords": ["if", "else", "for", "switch", "select", "case", "return", "go", "defer", "func", "type", "struct", "interface", "package", "import", "var", "const"]
   }
 }
 ```

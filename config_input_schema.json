@@ -77,9 +77,14 @@
       "properties": {
         "block_delimiters": {
           "type": "string",
-          "enum": ["braces", "end_keyword", "indentation"],
+          "enum": ["braces", "end_keyword", "indentation", "sequential"],
           "default": "braces",
-          "description": "How code blocks are delimited: 'braces' ({...}), 'end_keyword' (def...end), or 'indentation' (Python-style)"
+          "description": "How code blocks are delimited: 'braces' ({...}), 'end_keyword' (end keyword closes blocks), 'indentation' (Python-style), or 'sequential' (blocks end when the next one starts, e.g. COBOL, Assembly)"
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Reserved words for the language. Used as a reference for manual Pass 2 implementation (e.g. to skip keyword tokens when detecting calls). Has no effect on generated code."
         },
         "patterns": {
           "type": "object",
